@@ -1,0 +1,9 @@
+joblib
+numpy
+openai
+pandas
+PyMuPDF
+python-dotenv
+scikit-learn
+streamlit
+xgboost

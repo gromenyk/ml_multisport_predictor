@@ -1,0 +1,58 @@
+{
+  "week_start": "",
+  "week_end": "",
+  "week_type": "",
+  "macro": null,
+  "micro": null,
+  "sessions": [
+    {
+      "date": "",
+      "weekday": "",
+      "sport": "",
+      "session_type": "",
+      "terrain": "",
+      "blocks": [
+        {
+          "type": "rest"
+        },
+        {
+          "type": "warmup",
+          "zone": "",
+          "duration_min": null,
+          "distance_km": null
+        },
+        {
+          "type": "steady",
+          "zone": "",
+          "duration_min": null,
+          "distance_km": null
+        },
+        {
+          "type": "interval",
+          "repetitions": null,
+          "work": [
+            {
+              "zone": "",
+              "duration_min": null,
+              "distance_km": null
+            }
+          ],
+          "recovery": [
+            {
+              "zone": "",
+              "duration_min": null,
+              "max_duration_min": null,
+              "distance_km": null
+            }
+          ]
+        },
+        {
+          "type": "cooldown",
+          "zone": "",
+          "duration_min": null,
+          "distance_km": null
+        }
+      ]
+    }
+  ]
+}

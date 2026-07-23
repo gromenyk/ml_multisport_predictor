@@ -1,0 +1,219 @@
+template_id,count,sport,example_week,signature,objective_class
+1,7,Corrida,2024-04-08,"Corrida: WU(Z2, 20min) -> ST(Z4, 40min) -> CD(Z2, 20min)",Umbral de lactato (continuo)
+2,6,Corrida,2024-03-04,"Corrida: WU(Z2, 20min) -> ST(Z4, 60min) -> CD(Z2, 20min)",Umbral de lactato (continuo)
+3,6,Trail,2024-04-01,"Trail: WU(Z2, 20min) -> INT(5x;W[Z4@10min];R[Z2@10min]) -> CD(Z2, 20min)",Umbral de lactato (intervalos)
+4,5,Corrida,2025-12-15,"Corrida: WU(Z2, 15min, max=30min) -> INT(6x;W[Z6@0.1km];R[Z2@3min]) -> ST(Z3, 4km) -> CD(Z2, 10min)",VO₂max / capacidad anaeróbica
+5,4,Trail,2021-03-15,"Trail: WU(Z1, 15min) -> INT(5x;W[Z4@10min];R[Z2@10min]) -> CD(Z1, 15min)",Umbral de lactato (intervalos)
+6,4,Trail,2021-12-20,"Trail: ST(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 30min) -> ST(Z2, 30min) -> ST(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+7,4,Bici,2023-12-11,"Bici: WU(Z2, 30min) -> INT(2x;W[Z5@3km];R[Z2@3min|Z2@15min]) -> CD(Z2, 20min)",VO₂max (intervalos)
+8,4,Corrida,2024-01-22,"Corrida: WU(Z2, 20min) -> ST(Z3, 60min) -> CD(Z2, 15min)",Tempo / desarrollo aeróbico intensivo
+9,4,Bici,2024-02-12,"Bici: WU(Z2, 30min) -> ST(Z4, 60min) -> CD(Z2, 30min)",Umbral de lactato (continuo)
+10,4,Corrida,2024-03-25,"Corrida: WU(Z2, 30min) -> INT(10x;W[Z5@1.5min|Z6@0.5min];R[Z2@2min]) -> CD(Z2, 20min)",VO₂max / capacidad anaeróbica
+11,4,Corrida,2025-04-07,"Corrida: WU(Z2, 30min) -> INT(10x;W[Z5@1.5min|Z6@0.5min];R[Z2@4min]) -> CD(Z2, 20min)",VO₂max / capacidad anaeróbica
+12,4,Corrida,2025-04-07,"Corrida: WU(Z2, 30min) -> INT(4x;W[Z5@1km];R[3min]) -> ST(Z3, 50.9min, 8km)",VO₂max (intervalos)
+13,3,Corrida,2020-11-30,"Corrida: WU(Z1, 15min) -> ST(Z2, 15min) -> INT(1x;W[Z5@1km];R[Z1@3min]) -> ST(Z2, 15min) -> INT(1x;W[Z5@1km];R[Z1@3min]) -> CD(Z1, 15min)",VO₂max (intervalos)
+14,3,Bici,2021-03-01,"Bici: WU(Z1, 15min) -> ST(Z2, 30min) -> INT(8x;W[Z5@3min|Z6@0.5min];R[Z2@4min]) -> ST(Z2, 30min) -> CD(Z1, 15min)",VO₂max / capacidad anaeróbica
+15,3,Bici,2021-03-29,"Bici: WU(10min) -> ST(Z2, 80min, max=150min, 30km) -> CD(10min)",Resistencia aeróbica extensiva
+16,3,Bici,2021-04-05,"Bici: WU(10min) -> ST(Z4, 80min, max=150min, 30km) -> CD(10min)",Umbral de lactato (continuo)
+17,3,Trail,2021-05-17,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 30min) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+18,3,Bici,2022-01-03,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 45min) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+19,3,Corrida,2023-08-21,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> ST(Z4, 20min) -> ST(Z2, 4min) -> ST(Z4, 15min) -> ST(Z2, 3min) -> ST(Z4, 10min) -> ST(Z2, 2min) -> ST(Z4, 5min) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+20,3,Corrida,2023-12-04,"Corrida: WU(Z2, 30min) -> INT(2x;W[Z5@1km];R[Z2@3min|Z2@15min]) -> CD(Z2, 15min)",VO₂max (intervalos)
+21,3,Bici,2023-12-04,"Bici: WU(Z2, 30min) -> ST(Z3, 30min) -> CD(Z2, 20min)",Tempo / desarrollo aeróbico intensivo
+22,3,Corrida,2023-12-11,"Corrida: WU(Z2, 20min) -> ST(Z3, 30min) -> CD(Z2, 15min)",Tempo / desarrollo aeróbico intensivo
+23,3,Bici,2023-12-25,"Bici: WU(Z2, 30min) -> ST(Z3, 45min) -> CD(Z2, 20min)",Tempo / desarrollo aeróbico intensivo
+24,3,Corrida,2024-01-01,"Corrida: WU(Z2, 20min) -> ST(Z3, 45min) -> CD(Z2, 15min)",Tempo / desarrollo aeróbico intensivo
+25,3,Corrida,2024-01-22,"Corrida: WU(Z2, 30min) -> INT(2x;W[Z5@1km|Z2@15min];R[Z2@3min]) -> CD(Z2, 15min)",VO₂max (intervalos)
+26,3,Corrida,2024-03-04,"Corrida: WU(Z2, 20min) -> ST(Z3, 120min) -> CD(Z2, 15min)",Resistencia aeróbica extensiva
+27,3,Trail,2024-04-29,"Trail: WU(Z2, 20min) -> INT(2x;W[Z4@30min];R[Z2@30min]) -> CD(Z2, 20min)",Umbral de lactato (intervalos)
+28,3,Trail,2024-10-14,"Trail: ST(Z2, 95.5min, 15km) -> ST(Z2)",Resistencia aeróbica extensiva
+29,3,Bici,2025-02-10,"Bici: WU(Z2, 30min) -> ST(Z3, 120min) -> CD(Z2, 20min)",Resistencia aeróbica extensiva
+30,3,Corrida,2025-03-03,"Corrida: WU(Z2, 30min) -> INT(4x;W[Z5@1km];R[3min]) -> ST(Z3, 50.9min, max=326.1min, 8km)",VO₂max (intervalos)
+31,2,Trail,2020-09-21,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 60min) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+32,2,Trail,2020-11-23,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 10km) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+33,2,Corrida,2021-01-25,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> ST(Z4, 60min, 16km) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+34,2,Bici,2021-03-01,"Bici: WU(Z1, 10min) -> ST(Z2, 30min) -> ST(Z4, 25min) -> ST(Z2, 5min) -> ST(Z4, 20min) -> ST(Z2, 4min) -> ST(Z4, 15min) -> ST(Z2, 3min) -> ST(Z4, 10min) -> ST(Z2, 2min) -> ST(Z4, 5min) -> ST(Z2, 20min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+35,2,Kayak,2021-03-08,"Kayak: WU(Z1, 15min) -> INT(10x;W[Z5@2min];R[Z2@2min]) -> CD(Z1, 15min)",VO₂max (intervalos)
+36,2,Kayak,2021-03-29,"Kayak: WU(10min) -> ST(Z3, 80min, max=150min, 15km) -> CD(10min)",Tempo / desarrollo aeróbico intensivo
+37,2,Corrida,2021-04-05,"Corrida: WU(10min) -> ST(Z2, 50min, max=100min, 10km) -> CD(10min)",Resistencia aeróbica extensiva
+38,2,Bici,2021-12-13,"Bici: ST(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 30min) -> ST(Z2, 30min) -> ST(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+39,2,Trail,2022-01-10,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 45min) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+40,2,Bici,2022-05-16,"Bici: WU(Z1, 10min) -> ST(Z2, 20min) -> ST(Z4, 60min) -> ST(Z2, 20min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+41,2,Trail,2022-05-30,"Trail: ST(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 60min) -> ST(Z2, 30min) -> ST(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+42,2,Corrida,2022-09-19,"Corrida: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(6x;W[Z5@2min|Z5@1min|Z6@0.5min];R[Z1@1min|Z1@0.5min|Z1@0.5min]) -> CD(Z2, 10min) -> CD(Z1, 10min)",VO₂max / capacidad anaeróbica
+43,2,Corrida,2023-02-06,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> ST(Z4, 60min) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+44,2,Bici,2024-01-15,"Bici: WU(Z2, 30min) -> ST(Z3, 60min) -> CD(Z2, 20min)",Tempo / desarrollo aeróbico intensivo
+45,2,Bici,2024-02-05,"Bici: WU(Z2, 30min) -> ST(Z3, 90min) -> CD(Z2, 20min)",Tempo / desarrollo aeróbico intensivo
+46,2,Corrida,2024-02-12,"Corrida: WU(Z2, 20min) -> ST(Z3, 90min) -> CD(Z2, 15min)",Tempo / desarrollo aeróbico intensivo
+47,2,Bici,2024-06-24,"Bici: WU(Z2, 30min) -> INT(3x;W[Z4@20min];R[Z2@10min]) -> CD(Z2, 20min)",Umbral de lactato (intervalos)
+48,2,Bici,2024-07-01,"Bici: WU(Z2, 30min) -> INT(5x;W[Z4@10min];R[Z2@5min]) -> CD(Z2, 30min)",Umbral de lactato (intervalos)
+49,2,Corrida,2024-10-07,"Corrida: WU(Z2, 30min) -> INT(10x;W[Z5@0.4km];R[1.5min]) -> ST(Z3, 8km)",VO₂max (intervalos)
+50,2,Corrida,2024-10-07,"Corrida: WU(Z2, 30min) -> INT(6x;W[Z5@1km];R[1min]) -> ST(Z3, 8km)",VO₂max (intervalos)
+51,1,Corrida,2020-08-31,"Corrida: ST(Z1, 15min) -> ST(Z2, 15min) -> INT(1x;W[Z5@1km];R[Z1@3min]) -> ST(Z2, 15min) -> INT(1x;W[Z5@1km];R[Z1@3min]) -> ST(Z2, 10min) -> ST(Z1, 10min)",VO₂max (intervalos)
+52,1,Bici,2020-09-21,"Bici: WU(Z1, 10min) -> ST(Z2, 20min) -> INT(6x;W[Z5@4min|Z6@0.5min];R[Z2@5min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",VO₂max / capacidad anaeróbica
+53,1,Bici,2020-09-28,"Bici: ST(Z1, 15min) -> ST(Z2, 15min) -> INT(5x;W[Z5@2min|Z6@0.5min];R[Z1@3min]) -> ST(Z2, 15min) -> ST(Z1, 15min)",VO₂max / capacidad anaeróbica
+54,1,Trail,2020-09-28,"Trail: ST(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 90min) -> ST(Z2, 15min) -> ST(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+55,1,Bici,2020-10-05,"Bici: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(2x;W[Z3@30min];R[Z2@10min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",Resistencia aeróbica extensiva
+56,1,Corrida,2020-10-12,"Corrida: WU(Z1, 15min) -> ST(Z2, 15min) -> INT(2x;W[Z5@1km];R[Z1@3min]) -> ST(Z2, 15min) -> CD(Z1, 15min)",VO₂max (intervalos)
+57,1,Bici,2020-10-12,"Bici: WU(Z1, 5min) -> ST(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 18km) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+58,1,Bici,2020-10-12,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> INT(2x;W[Z5@3km];R[Z1@3min]) -> ST(Z2, 15min) -> CD(Z1, 15min)",VO₂max (intervalos)
+59,1,Bici,2020-11-02,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 24km) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+60,1,Trail,2020-11-09,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 8km) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+61,1,Kayak,2020-11-09,"Kayak: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 8km) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+62,1,Kayak,2020-11-30,"Kayak: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 10km) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+63,1,Bici,2020-12-07,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> INT(1x;W[Z5@3km];R[Z1@3min]) -> ST(Z2, 15min) -> INT(1x;W[Z5@3km];R[Z1@3min]) -> CD(Z1, 15min) -> ST(Z2, 30min, max=50min)",VO₂max (intervalos)
+64,1,Bici,2020-12-14,"Bici: ST(Z1, 15min, max=15min) -> ST(Z2, 15min, max=15min) -> ST(Z3, 24km) -> ST(Z2, 30min, max=30min) -> ST(Z1, 15min, max=15min)",Tempo / desarrollo aeróbico intensivo
+65,1,Trail,2020-12-21,"Trail: ST(Z1, 15min, max=15min) -> ST(Z2, 15min, max=15min) -> ST(Z3, 8km) -> ST(Z2, 30min, max=30min) -> ST(Z1, 15min, max=15min)",Tempo / desarrollo aeróbico intensivo
+66,1,Kayak,2020-12-21,"Kayak: ST(Z1, 15min, max=15min) -> ST(Z2, 15min, max=15min) -> ST(Z3, 8km) -> ST(Z2, 30min, max=30min) -> ST(Z1, 15min, max=15min)",Tempo / desarrollo aeróbico intensivo
+67,1,Trail,2020-12-28,"Trail: ST(Z1, 15min, max=15min) -> INT(5x;W[Z4@10min];R[Z2@10min]) -> ST(Z1, 15min, max=15min)",Umbral de lactato (intervalos)
+68,1,Bici,2020-12-28,"Bici: ST(Z1, 15min, max=15min) -> ST(Z2, 15min, max=15min) -> ST(Z3, 42km) -> ST(Z2, 30min, max=30min) -> ST(Z1, 15min, max=15min)",Tempo / desarrollo aeróbico intensivo
+69,1,Corrida,2021-01-04,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> ST(Z4, 40min) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+70,1,Trail,2021-01-04,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 14km) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+71,1,Kayak,2021-01-04,"Kayak: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 14km) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+72,1,Kayak,2021-01-11,"Kayak: WU(Z1, 10min) -> ST(Z2, 10min) -> ST(Z4, 60min) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+73,1,Corrida,2021-01-18,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(1x;W[Z4@20min|Z4@15min|Z4@10min|Z4@5min];R[Z2@4min|Z2@3min|Z2@2min|Z2@10min]) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+74,1,Bici,2021-01-18,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 54km) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+75,1,Trail,2021-02-01,"Trail: WU(Z1, 10min) -> ST(Z2, 10min) -> ST(Z3, 10min) -> INT(6x;W[Z5@0.5min|Z6@0.5min];R[Z1@1min]) -> ST(Z3, 10min) -> INT(6x;W[Z5@0.5min|Z6@0.5min];R[Z1@1min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",VO₂max / capacidad anaeróbica
+76,1,Corrida,2021-02-01,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> ST(Z4, 30min) -> ST(Z2, 15min) -> ST(Z3, 15min)",Umbral de lactato (continuo)
+77,1,Bici,2021-02-08,"Bici: WU(Z1, 15min) -> ST(Z2, 30min) -> INT(8x;W[Z5@3min];R[Z1@3min]) -> ST(Z2, 30min) -> CD(Z1, 15min)",VO₂max (intervalos)
+78,1,Bici,2021-02-08,"Bici: WU(Z1, 15min) -> ST(Z2, 30min) -> ST(Z4, 20min) -> ST(Z2, 4min) -> ST(Z4, 15min) -> ST(Z2, 3min) -> ST(Z4, 10min) -> ST(Z2, 2min) -> ST(Z4, 5min) -> ST(Z2, 30min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+79,1,Kayak,2021-02-15,"Kayak: WU(Z1, 10min) -> ST(Z2, 10min) -> ST(Z3, 10min) -> INT(6x;W[Z5@0.5min|Z6@0.5min];R[Z1@1min]) -> ST(Z3, 10min) -> INT(6x;W[Z5@0.5min|Z6@0.5min];R[Z1@1min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",VO₂max / capacidad anaeróbica
+80,1,Trail,2021-02-22,"Trail: WU(Z1, 15min) -> INT(8x;W[Z5@3min|Z6@0.5min];R[Z2@6min]) -> CD(Z1, 15min)",VO₂max / capacidad anaeróbica
+81,1,Corrida,2021-02-22,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> ST(Z4, 30min) -> ST(Z2, 15min) -> ST(Z4, 30min) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+82,1,Bici,2021-03-15,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 90min) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+83,1,Corrida,2021-03-29,"Corrida: WU(10min) -> ST(Z4, 50min, 10km) -> CD(10min)",Umbral de lactato (continuo)
+84,1,Corrida,2021-03-29,"Corrida: WU(10min) -> ST(Z2, 20min, max=60min, 5km) -> CD(10min)",Resistencia aeróbica extensiva
+85,1,Bici,2021-03-29,"Bici: WU(10min) -> ST(Z4, 210min, max=390min, 100km) -> CD(10min)",Umbral de lactato (continuo)
+86,1,Corrida,2021-04-05,"Corrida: WU(10min) -> ST(Z3, 80min, max=150min, 15km) -> CD(10min)",Tempo / desarrollo aeróbico intensivo
+87,1,Kayak,2021-04-05,"Kayak: WU(10min) -> ST(Z2, 80min, max=150min, 15km) -> CD(10min)",Resistencia aeróbica extensiva
+88,1,Kayak,2021-04-05,"Kayak: WU(10min) -> ST(Z4, 210min, max=420min, 35km) -> CD(10min)",Umbral de lactato (continuo)
+89,1,Corrida,2021-04-12,"Corrida: WU(10min) -> ST(Z2, 80min, max=150min, 15km) -> CD(10min)",Resistencia aeróbica extensiva
+90,1,Corrida,2021-04-12,"Corrida: WU(10min) -> ST(Z4, 50min, max=90min, 10km) -> CD(10min)",Umbral de lactato (continuo)
+91,1,Corrida,2021-04-12,"Corrida: WU(10min) -> ST(Z4, 300min, max=600min, 50km) -> CD(10min)",Umbral de lactato (continuo)
+92,1,Corrida,2021-04-19,"Corrida: WU(10min) -> ST(Z4, 80min, max=150min, 15km) -> CD(10min)",Umbral de lactato (continuo)
+93,1,Bici,2021-05-10,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 18km) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+94,1,Trail,2021-06-21,"Trail: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(6x;W[Z5@0.5min|Z6@0.5min];R[Z1@3min]) -> ST(Z3, 10min) -> INT(6x;W[Z5@0.5min|Z6@0.5min];R[Z1@3min]) -> CD(Z3, 10min)",VO₂max / capacidad anaeróbica
+95,1,Corrida,2021-06-21,"Corrida: WU(Z1, 10min) -> WU(Z2, 10min) -> ST(Z4, 30min, 14km) -> ST(Z2, 15min) -> CD(Z3, 15min)",Umbral de lactato (continuo)
+96,1,Corrida,2021-06-28,"Corrida: WU(Z1, 10min) -> WU(Z2, 10min) -> ST(Z4, 30min, 20km) -> ST(Z2, 15min) -> ST(Z4, 30min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+97,1,Bici,2021-06-28,"Bici: WU(Z1, 10min) -> ST(Z2, 30min) -> ST(Z4, 25min) -> ST(Z2, 5min) -> ST(Z4, 20min) -> ST(Z2, 20min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+98,1,Bici,2021-07-19,"Bici: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(4x;W[Z4@10min];R[Z2@3min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+99,1,Corrida,2021-08-02,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> ST(Z4, 20min) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+100,1,Trail,2021-08-30,"Trail: WU(Z1, 15min) -> WU(Z2, 15min) -> INT(8x;W[Z5@3min|Z6@0.5min];R[Z1@4min]) -> CD(Z1, 15min)",VO₂max / capacidad anaeróbica
+101,1,Trail,2021-08-30,"Trail: WU(Z1, 15min) -> WU(Z2, 15min) -> ST(Z4, 25min) -> ST(Z2, 5min) -> ST(Z4, 20min) -> ST(Z2, 4min) -> ST(Z4, 15min) -> ST(Z2, 3min) -> ST(Z4, 10min) -> ST(Z2, 20min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+102,1,Bici,2021-10-25,"Bici: WU(Z1, 15min, max=15min) -> ST(Z2, 15min, max=15min) -> ST(Z3, 120min, max=120min) -> ST(Z2, 15min, max=15min) -> CD(Z1, 15min, max=15min)",Resistencia aeróbica extensiva
+103,1,Corrida,2021-11-08,"Corrida: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(4x;W[Z4@8min|Z5@2min|Z6@0.2min];R[Z2@5min]) -> CD(Z2, 10min) -> CD(Z1, 10min)",VO₂max / capacidad anaeróbica
+104,1,Bici,2021-11-08,"Bici: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(4x;W[Z4@14min|Z5@2min|Z6@0.2min];R[Z2@5min]) -> CD(Z2, 10min) -> CD(Z1, 10min)",VO₂max / capacidad anaeróbica
+105,1,Corrida,2021-11-15,"Corrida: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(4x;W[Z4@8min|Z5@1min|Z6@0.2min];R[Z3@1min]) -> CD(Z2, 10min) -> CD(Z1, 10min)",VO₂max / capacidad anaeróbica
+106,1,Kayak,2021-11-15,"Kayak: ST(Z2, 60min, 10km) -> ST(Z2, 10km)",Resistencia aeróbica extensiva
+107,1,Bici,2021-11-15,"Bici: ST(Z2, 90min) -> ST(Z2)",Resistencia aeróbica extensiva
+108,1,Trail,2021-12-06,"Trail: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(3x;W[Z4@10min];R[Z2@3min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+109,1,Corrida,2021-12-13,"Corrida: ST(Z1, 15min) -> ST(Z2, 15min) -> ST(Z5, 1km) -> ST(Z1, 3min) -> ST(Z2, 15min) -> ST(Z5, 1km) -> ST(Z1, 3min) -> ST(Z1, 15min)",Resistencia aeróbica extensiva
+110,1,Bici,2021-12-13,"Bici: ST(Z1, 15min) -> ST(Z2, 15min) -> ST(Z5, 3km) -> ST(Z1, 3min) -> ST(Z2, 15min) -> ST(Z5, 3km) -> ST(Z1, 3min) -> ST(Z1, 15min)",Resistencia aeróbica extensiva
+111,1,Kayak,2021-12-20,"Kayak: ST(Z1, 15min) -> ST(Z2, 15min) -> ST(Z5, 1km) -> ST(Z1, 3min) -> ST(Z2, 15min) -> ST(Z5, 1km) -> ST(Z1, 3min) -> ST(Z1, 15min)",Resistencia aeróbica extensiva
+112,1,Kayak,2021-12-20,"Kayak: ST(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 30min) -> ST(Z2, 30min) -> ST(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+113,1,Kayak,2022-01-10,"Kayak: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 45min) -> ST(Z2, 30min) -> CD(Z1, 15min) -> ST(Z3, 105min, max=170min, 18km)",Tempo / desarrollo aeróbico intensivo
+114,1,Bici,2022-02-07,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> INT(2x;W[Z5@3km];R[Z1@3min|Z2@15min]) -> CD(Z1, 15min)",VO₂max (intervalos)
+115,1,Corrida,2022-02-07,"Corrida: WU(Z1, 15min) -> ST(Z2, 15min) -> INT(2x;W[Z5@1km];R[Z1@3min|Z2@15min]) -> CD(Z1, 15min)",VO₂max (intervalos)
+116,1,Bici,2022-02-14,"Bici: WU(Z1, 15min) -> WU(Z2, 15min) -> ST(Z3, 90min) -> WU(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+117,1,Corrida,2022-02-21,"Corrida: WU(Z1, 10min) -> WU(Z2, 10min) -> ST(Z4, 40min, 15km) -> WU(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+118,1,Trail,2022-02-21,"Trail: WU(Z1, 15min) -> WU(Z2, 15min) -> ST(Z3, 90min, 24km) -> WU(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+119,1,Kayak,2022-02-21,"Kayak: WU(Z1, 15min) -> WU(Z2, 15min) -> ST(Z3, 90min, 24km) -> WU(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+120,1,Kayak,2022-02-28,"Kayak: WU(Z1, 10min) -> WU(Z2, 10min) -> ST(Z4, 60min, 16km) -> WU(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+121,1,Corrida,2022-03-07,"Corrida: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(-x;W[Z4@20min|Z4@15min|Z4@10min|Z4@5min];R[Z2@4min|Z2@3min|Z2@2min]) -> CD(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+122,1,Bici,2022-03-07,"Bici: WU(Z1, 15min) -> WU(Z2, 15min) -> INT(-x;W[Z3@120min];R[Z2@30min]) -> CD(Z1, 15min)",Revisión manual
+123,1,Corrida,2022-03-14,"Corrida: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(-x;W[Z4@60min];R[Z2@10min]) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+124,1,Trail,2022-03-14,"Trail: WU(Z1, 15min) -> WU(Z2, 15min) -> INT(-x;W[Z3@120min];R[Z2@30min]) -> CD(Z1, 15min)",Revisión manual
+125,1,Kayak,2022-03-14,"Kayak: WU(Z1, 15min) -> WU(Z2, 15min) -> INT(-x;W[Z3@120min];R[Z2@30min]) -> CD(Z1, 15min)",Revisión manual
+126,1,Bici,2022-03-21,"Bici: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(-x;W[Z4@60min];R[Z2@10min]) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+127,1,Bici,2022-03-28,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> INT(-x;W[Z4@20min|Z4@15min|Z4@10min|Z4@5min];R[Z2@4min|Z2@3min|Z2@2min]) -> ST(Z2, 15min) -> CD(Z1, 15min)",Umbral de lactato (intervalos)
+128,1,Trail,2022-04-25,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> INT(8x;W[Z5@3min|Z6@0.5min];R[Z1@4min]) -> CD(Z1, 15min)",VO₂max / capacidad anaeróbica
+129,1,Trail,2022-04-25,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z4, 25min) -> ST(Z2, 5min) -> ST(Z4, 20min) -> ST(Z2, 4min) -> ST(Z4, 15min) -> ST(Z2, 3min) -> ST(Z4, 10min) -> ST(Z2, 2min) -> ST(Z4, 5min) -> ST(Z2, 20min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+130,1,Trail,2022-05-02,"Trail: ST(Z2, 90min, 15km) -> ST(Z2)",Resistencia aeróbica extensiva
+131,1,Trail,2022-05-09,"Trail: ST(Z3, 105min, max=170min, 18km) -> ST(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 45min) -> ST(Z2, 30min) -> ST(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+132,1,Kayak,2022-05-09,"Kayak: ST(Z3, 105min) -> ST(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 30min) -> ST(Z2, 30min) -> ST(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+133,1,Corrida,2022-05-16,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(8x;W[Z5@2min|Z6@0.5min];R[Z2@3min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",VO₂max / capacidad anaeróbica
+134,1,Kayak,2022-05-30,"Kayak: ST(Z1, 5min) -> ST(Z2, 10min) -> ST(Z3, 30min) -> ST(Z2, 10min) -> ST(Z1, 5min)",Tempo / desarrollo aeróbico intensivo
+135,1,Corrida,2022-06-06,"Corrida: WU(Z1, 15min) -> ST(Z2, 15min) -> INT(2x;W[Z4@8min|Z5@2min|Z6@0.2min];R[Z2@5min]) -> CD(Z1, 15min)",VO₂max / capacidad anaeróbica
+136,1,Trail,2022-06-13,"Trail: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(5x;W[Z4@10min];R[Z2@10min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+137,1,Bici,2022-06-13,"Bici: WU(Z1, 15min) -> WU(Z2, 15min) -> ST(Z3, 90min) -> CD(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+138,1,Corrida,2022-06-20,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> ST(Z4, 40min, 15km) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+139,1,Trail,2022-06-20,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 90min) -> ST(Z2, 15min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+140,1,Bici,2022-06-27,"Bici: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(1x;W[Z4@60min];R[Z2@10min]) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+141,1,Trail,2022-07-04,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z4, 30min) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+142,1,Bici,2022-07-04,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 120min) -> ST(Z2, 30min) -> CD(Z1, 15min)",Resistencia aeróbica extensiva
+143,1,Trail,2022-07-11,"Trail: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(4x;W[Z4@10min];R[Z2@10min]) -> CD(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+144,1,Corrida,2022-07-18,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(4x;W[Z4@10min];R[Z2@3min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+145,1,Trail,2022-07-18,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 60min) -> ST(Z2, 15min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+146,1,Corrida,2022-07-25,"Corrida: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(4x;W[Z4@10min];R[Z2@3min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+147,1,Bici,2022-07-25,"Bici: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(2x;W[Z4@30min];R[Z2@15min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+148,1,Trail,2022-08-01,"Trail: WU(Z1, 10min) -> WU(Z2, 10min) -> ST(Z4, 60min) -> ST(Z2, 20min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+149,1,Trail,2022-08-08,"Trail: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(2x;W[Z4@30min];R[Z2@30min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+150,1,Trail,2022-08-22,"Trail: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(4x;W[Z4@10min];R[Z2@10min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+151,1,Trail,2022-08-29,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 120min) -> ST(Z2, 15min) -> CD(Z1, 15min)",Resistencia aeróbica extensiva
+152,1,Trail,2022-09-05,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z4, 30min) -> ST(Z2, 10min) -> ST(Z4, 30min) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+153,1,Trail,2022-09-12,"Trail: WU(Z1, 10min) -> ST(Z2, 10min) -> ST(Z4, 60min) -> ST(Z2, 20min) -> CD(Z1, 10min)",Umbral de lactato (continuo)
+154,1,Corrida,2022-10-03,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(2x;W[Z4@20min];R[Z2@10min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+155,1,Trail,2022-10-10,"Trail: WU(Z1, 15min) -> WU(Z2, 15min) -> ST(Z3, 45min) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+156,1,Trail,2022-11-07,"Trail: WU(Z1, 15min) -> INT(3x;W[Z4@10min];R[Z2@10min]) -> CD(Z1, 15min)",Umbral de lactato (intervalos)
+157,1,Bici,2022-11-14,"Bici: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(5x;W[Z4@10min];R[Z2@2min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+158,1,Trail,2022-11-14,"Trail: WU(Z1, 15min) -> INT(2x;W[Z4@20min];R[Z2@20min]) -> CD(Z1, 15min)",Umbral de lactato (intervalos)
+159,1,Trail,2022-11-21,"Trail: WU(Z1, 15min) -> INT(2x;W[Z4@30min];R[Z2@10min]) -> CD(Z1, 15min)",Umbral de lactato (intervalos)
+160,1,Bici,2022-11-21,"Bici: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(6x;W[Z4@10min];R[Z2@5min]) -> ST(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+161,1,Bici,2022-11-28,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> INT(1x;W[Z5@3km];R[Z1@3min]) -> ST(Z2, 15min) -> INT(1x;W[Z5@3km];R[Z1@3min]) -> CD(Z1, 15min)",VO₂max (intervalos)
+162,1,Bici,2022-11-28,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 30min) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+163,1,Kayak,2022-12-05,"Kayak: WU(Z1, 15min) -> ST(Z2, 15min) -> INT(1x;W[Z5@1km];R[Z1@3min]) -> ST(Z2, 15min) -> INT(1x;W[Z5@1km];R[Z1@3min]) -> CD(Z1, 15min)",VO₂max (intervalos)
+164,1,Kayak,2022-12-05,"Kayak: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 30min) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+165,1,Bici,2023-01-09,"Bici: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 60min) -> ST(Z2, 30min) -> CD(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+166,1,Trail,2023-02-06,"Trail: WU(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 120min) -> ST(Z2, 30min) -> CD(Z1, 15min)",Resistencia aeróbica extensiva
+167,1,Trail,2023-07-03,"Trail: ST(Z1, 15min) -> ST(Z2, 15min) -> ST(Z3, 45min) -> ST(Z2, 30min) -> ST(Z1, 15min)",Tempo / desarrollo aeróbico intensivo
+168,1,Corrida,2023-08-28,"Corrida: WU(Z1, 10min) -> ST(Z2, 10min) -> INT(1x;W[Z4@20min|Z4@15min|Z4@10min|Z4@5min];R[Z2@4min|Z2@3min|Z2@2min]) -> CD(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+169,1,Trail,2023-11-13,"Trail: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(2x;W[Z4@20min];R[Z2@20min]) -> CD(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+170,1,Bici,2023-11-20,"Bici: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(3x;W[Z4@20min];R[Z2@10min]) -> CD(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+171,1,Trail,2023-11-27,"Trail: WU(Z1, 10min) -> WU(Z2, 10min) -> INT(2x;W[Z4@30min];R[Z2@30min]) -> CD(Z2, 10min) -> CD(Z1, 10min)",Umbral de lactato (intervalos)
+172,1,Trail,2023-12-25,"Trail: ST(Z3, 108.2min, max=693min, 17km) -> ST(Z2, 25km)",Tempo / desarrollo aeróbico intensivo
+173,1,Trail,2024-02-05,"Trail: WU(Z2, 20min) -> INT(3x;W[Z4@10min];R[Z2@10min]) -> CD(Z2, 20min)",Umbral de lactato (intervalos)
+174,1,Corrida,2024-02-26,"Corrida: WU(Z2, 20min) -> INT(1x;W[Z4@15min|Z4@10min|Z4@5min];R[Z2@3min|Z2@2min]) -> CD(Z2, 20min)",Umbral de lactato (intervalos)
+175,1,Corrida,2024-04-01,"Corrida: WU(Z2, 30min) -> INT(6x;W[Z5@1km];R[Z2@3min]) -> CD(Z2, 20min)",VO₂max (intervalos)
+176,1,Corrida,2024-04-08,"Corrida: WU(Z2, 30min) -> INT(10x;W[Z5@2min];R[Z2@2min]) -> CD(Z2, 20min)",VO₂max (intervalos)
+177,1,Trail,2024-04-22,"Trail: WU(Z2, 20min) -> INT(4x;W[Z4@10min];R[Z2@10min]) -> CD(Z2, 20min)",Umbral de lactato (intervalos)
+178,1,Trail,2024-05-06,"Trail: WU(Z2, 20min) -> INT(6x;W[Z4@10min];R[Z2@10min]) -> CD(Z2, 20min)",Umbral de lactato (intervalos)
+179,1,Corrida,2024-07-15,"Corrida: WU(Z2, 20min) -> INT(4x;W[Z4@8min|Z5@2min|Z6@0.2min];R[Z2@5min]) -> CD(Z2, 20min)",VO₂max / capacidad anaeróbica
+180,1,Corrida,2024-07-22,"Corrida: WU(Z2, 20min) -> INT(4x;W[Z4@8min|Z5@1min@0.2km|Z6@0.2min@0.1km];R[Z3@3min]) -> CD(Z2, 20min)",VO₂max / capacidad anaeróbica
+181,1,Trail,2024-07-29,"Trail: ST(Z2, 63.7min, 10km) -> ST(Z2, 127.3min, 10km)",Resistencia aeróbica extensiva
+182,1,Corrida,2024-07-29,"Corrida: WU(Z2, 30min) -> INT(10x;W[Z5@0.4km];R[1.5min]) -> ST(Z3, 38.2min, 6km) -> ST(Z3, 244.6min, 6km)",VO₂max (intervalos)
+183,1,Trail,2024-07-29,"Trail: ST(Z2, 95.5min, 15km) -> ST(Z2, 191min, 15km)",Resistencia aeróbica extensiva
+184,1,Corrida,2024-08-05,"Corrida: WU(Z2, 30min) -> INT(6x;W[Z5@0.3km|Z6@0.1km];R[1.5min]) -> ST(Z3, 19.1min, max=122.3min, 3km)",VO₂max / capacidad anaeróbica
+185,1,Corrida,2024-09-09,"Corrida: WU(Z2, 30min) -> INT(3x;W[Z5@1km|Z6@0.1km];R[Z1@1min]) -> ST(Z3, 8km)",VO₂max / capacidad anaeróbica
+186,1,Corrida,2024-09-16,"Corrida: WU(Z2, 30min) -> INT(3x;W[Z4@2km];R[2.5min]) -> ST(Z3, 38.2min, 6km)",Umbral de lactato (intervalos)
+187,1,Corrida,2024-09-16,"Corrida: WU(Z2, 30min) -> INT(5x;W[Z5@1km];R[1min]) -> ST(Z3, 50.9min, 8km)",VO₂max (intervalos)
+188,1,Bici,2024-09-23,"Bici: WU(Z2, 30min) -> INT(10x;W[Z5@2min];R[Z2@1.5min]) -> INT(5x;W[Z5@4min];R[Z2@1.5min]) -> ST(Z3, 60min)",VO₂max (intervalos)
+189,1,Corrida,2024-09-30,"Corrida: WU(Z2, 30min) -> INT(8x;W[Z5@0.4km];R[1.5min]) -> ST(Z3, 50.9min, 8km)",VO₂max (intervalos)
+190,1,Corrida,2024-09-30,"Corrida: WU(Z2, 30min) -> INT(4x;W[Z5@1km];R[1min]) -> ST(Z3, 50.9min, 8km)",VO₂max (intervalos)
+191,1,Corrida,2024-10-21,"Corrida: WU(Z2, 30min) -> INT(12x;W[Z5@0.4km];R[1.5min]) -> ST(Z3, 5km)",VO₂max (intervalos)
+192,1,Corrida,2024-10-21,"Corrida: WU(Z2, 30min) -> INT(5x;W[Z5@1km];R[3.5min]) -> ST(Z3, 5km)",VO₂max (intervalos)
+193,1,Corrida,2024-11-04,"Corrida: WU(Z2, 30min) -> INT(10x;W[Z5@0.4km];R[1.5min]) -> ST(Z3, 50.9min, 8km, max=326.1min)",VO₂max (intervalos)
+194,1,Trail,2024-11-04,"Trail: ST(Z3, 191min, 30km, max=1223min) -> ST(Z3, 95.5min, 15km, max=611.5min)",Resistencia aeróbica extensiva
+195,1,Corrida,2024-11-11,"Corrida: WU(Z2, 30min) -> INT(3x;W[Z4@2km];R[2.5min]) -> ST(Z3, 6km)",Umbral de lactato (intervalos)
+196,1,Corrida,2024-11-18,"Corrida: WU(Z2, 30min) -> INT(10x;W[Z5@0.4km];R[1.5min]) -> CD(Z2, 30min)",VO₂max (intervalos)
+197,1,Bici,2024-11-18,"Bici: WU(Z2, 30min) -> INT(10x;W[Z5@1.5min];R[Z2@1.5min]) -> CD(Z2, 45min)",VO₂max (intervalos)
+198,1,Corrida,2025-02-10,"Corrida: WU(Z2, 20min) -> INT(-x;W[Z4@20min|Z4@15min|Z4@10min|Z4@5min];R[Z2@4min|Z2@3min|Z2@2min]) -> CD(Z2, 20min)",Umbral de lactato (intervalos)
+199,1,Corrida,2025-03-31,"Corrida: WU(Z2, 20min) -> ST(Z4, 60min, 15.7km) -> CD(Z2, 20min)",Umbral de lactato (continuo)
+200,1,Corrida,2025-03-31,"Corrida: WU(Z2, 30min) -> ST(Z4, 84.7min, 20km, max=95.3min) -> CD(Z2, 15min)",Umbral de lactato (continuo)
+201,1,Corrida,2025-07-07,"Corrida: WU(Z2, 20min) -> INT(1x;W[Z4@20min];R[Z2@4min]) -> INT(1x;W[Z4@15min];R[Z2@3min]) -> INT(1x;W[Z4@10min];R[Z2@2min]) -> INT(1x;W[Z4@5min];R[Z2]) -> CD(Z2, 20min)",Umbral de lactato (intervalos)
+202,1,Corrida,2025-07-14,"Corrida: WU(Z2, 20min) -> ST(Z3, 120min, 5.7km) -> CD(Z2, 15min)",Resistencia aeróbica extensiva
+203,1,Trail,2025-09-08,"Trail: ST(Z2, 101.9min, 16km) -> ST(Z2)",Resistencia aeróbica extensiva
+204,1,Trail,2025-09-08,"Trail: ST(Z3, 159.2min, 25km) -> ST(Z3)",Resistencia aeróbica extensiva
+205,1,Corrida,2025-11-10,"Corrida: WU(Z2, 30min) -> INT(4x;W[Z5@1km];R[Z2@3min]) -> ST(Z3, 50.9min, 8km)",VO₂max (intervalos)
+206,1,Corrida,2025-11-17,"Corrida: WU(Z2, 30min) -> INT(4x;W[Z5@1km];R[3min]) -> ST(Z3, 8km)",VO₂max (intervalos)
+207,1,Corrida,2025-12-01,"Corrida: WU(Z2, 15min) -> INT(6x;W[Z6@0.1km];R[Z2@3min]) -> ST(Z3, 25.5min, 4km) -> CD(Z2, 10min)",VO₂max / capacidad anaeróbica
+208,1,Corrida,2025-12-22,"Corrida: WU(Z2, 15min, max=30min) -> INT(6x;W[Z6@0.1km];R[Z2@3min]) -> ST(Z3, 25.5min, max=163.1min, 4km) -> CD(Z2, 10min)",VO₂max / capacidad anaeróbica
+209,1,Corrida,2025-12-22,"Corrida: WU(Z2, 20min) -> ST(Z3, 45min, 3.8km) -> CD(Z2, 15min)",Tempo / desarrollo aeróbico intensivo
+210,1,Corrida,2026-01-05,"Corrida: WU(Z2, 15min) -> INT(6x;W[Z6@0.1km];R[Z2@3min]) -> ST(Z3, 25.5min, max=163.1min, 4km) -> CD(Z2, 10min)",VO₂max / capacidad anaeróbica
+211,1,Corrida,2026-01-26,"Corrida: WU(Z2, 15min, max=30min) -> INT(6x;W[Z6@0.1km];R[Z2@3min]) -> ST(Z3, 25.5min, 4km, max=163.1min) -> CD(Z2, 10min)",VO₂max / capacidad anaeróbica
+212,1,Corrida,2026-02-23,"Corrida: WU(Z2, 20min) -> INT(1x;W[Z4@20min|Z4@15min|Z4@10min|Z4@5min];R[Z2@4min|Z2@3min|Z2@2min|Z2]) -> CD(Z2, 20min)",Umbral de lactato (intervalos)
+213,1,Corrida,2026-02-23,"Corrida: WU(Z2, 15min) -> INT(6x;W[Z6@0.4min@0.1km];R[Z2@3min]) -> ST(Z3, 25.5min, 4km) -> CD(Z2, 10min)",VO₂max / capacidad anaeróbica
+214,1,Trail,2026-03-09,"Trail: WU(Z2, 30min) -> ST(Z4, 211.7min, max=238.3min, 50km) -> CD(Z2, 15min)",Umbral de lactato (continuo)
+215,1,Corrida,2026-03-30,"Corrida: WU(Z2, 30min) -> INT(1x;W[Z4@10km];R[Z2@15min])",Umbral de lactato (intervalos)
+216,1,Corrida,2026-03-30,"Corrida: WU(Z2, 30min) -> INT(1x;W[Z4@20km];R[Z2@15min])",Umbral de lactato (intervalos)
+217,1,Corrida,2026-04-06,"Corrida: WU(Z2, 30min) -> ST(Z4, 84.7min, max=95.3min, 20km) -> CD(Z2, 15min)",Umbral de lactato (continuo)
+218,1,Corrida,2026-06-29,"Corrida: WU(Z2, 20min) -> INT(1x;W[Z4@60min];R[Z2@20min]) -> CD(Z2)",Umbral de lactato (intervalos)

@@ -1,0 +1,40 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Personal training data
+data/raw_data/*
+!data/raw_data/.gitkeep
+data/processed_data/*
+!data/processed_data/.gitkeep
+data/temp/
+
+# Generated model artifacts
+ML/models/**/*.pkl
+ML/models/*.pkl
+
+# Generated evaluations and predictions
+ML/results/*.txt
+ML/results/*.json
+ML/train/*_predictions.txt
+ML/train/zone_predictions.txt
+
+# Temporary, editor and OS files
+*.tmp
+*.log
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
