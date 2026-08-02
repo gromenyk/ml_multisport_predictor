@@ -239,6 +239,9 @@ WEEK_TYPE_MAPPING = {
     "4 - PICO DE PERFORMANCE":
         "Pico de Performance",
 
+    "PICO DE PERFORMANCE":
+        "Pico de Performance",
+
     # Especiales
 
     "SEMANA CONTROLE":

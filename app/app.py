@@ -1,634 +1,319 @@
-"""
-app.py
+"""Main Streamlit application for Training Planner AI."""
 
-Main Streamlit application for Training Planner AI.
-"""
-
-import json
-import os
-import re
-import subprocess
+from pathlib import Path
 import sys
-from datetime import datetime
 
 import streamlit as st
 
-from config import (
-    initialize_project,
-    PROCESSED_DATA_DIR,
-    PROJECT_ROOT,
-)
-from backend.upload import save_pdf
-from backend.process import process_pending_pdfs
-from backend.normalizer import normalize_json
-from backend.structured_processor import process_structured_sessions
+# Streamlit adds ``app`` to sys.path when this file is executed directly.
+# Project-level packages such as ``metrics`` live one directory above it.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-# ==========================================================
-# INITIALIZATION
-# ==========================================================
+from config import initialize_project
+from ui_pages import (
+    adaptive_plan,
+    athlete_state,
+    calendar_page,
+    data_ingestion,
+    objectives,
+    predictions,
+    training_load,
+)
+
 
 initialize_project()
-
-# ==========================================================
-# PAGE CONFIGURATION
-# ==========================================================
 
 st.set_page_config(
     page_title="Training Planner AI",
     page_icon="🏃",
-    layout="wide"
+    layout="wide",
 )
 
-# ==========================================================
-# CSS
-# ==========================================================
-
-st.markdown("""
+st.markdown(
+    """
 <style>
+html, body, [class*="css"] {
+    font-family: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
+    color: #17233C;
+}
 
-.main {
-    background-color: #F5F7FA;
+.stApp {
+    background: #F4F7FB;
 }
 
 .block-container {
-    max-width: 1100px;
+    box-sizing: border-box;
+    width: 95%;
+    max-width: 1540px;
     padding-top: 2rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
 }
 
-h1 {
-    color: #1E3A8A;
+@media (max-width: 768px) {
+    .block-container {
+        width: 100%;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
 }
 
-div.stButton > button {
-    background-color: #2563EB;
-    color: white;
+h1, h2, h3 {
+    color: #112B4E;
+    font-family: "Bahnschrift", "Aptos Display", "Segoe UI", sans-serif;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+}
+
+div.stButton > button,
+div.stFormSubmitButton > button,
+div.stDownloadButton > button {
     border-radius: 8px;
-    border: none;
-    height: 50px;
-    font-size: 17px;
+    min-height: 42px;
+    font-size: 15px;
+    font-family: "Bahnschrift", "Aptos", "Segoe UI", sans-serif;
     font-weight: 600;
+    letter-spacing: .01em;
+    box-shadow: none;
+    transition: border-color .15s ease, background-color .15s ease;
 }
 
-div.stButton > button:hover {
-    background-color: #1D4ED8;
-    color: white;
+[data-testid="stBaseButton-primary"] {
+    background: #1267E5;
+    color: #FFFFFF;
+    border: 1px solid #1267E5;
 }
 
+[data-testid="stBaseButton-primary"]:hover {
+    background: #0B50BC;
+    border-color: #0B50BC;
+    color: #FFFFFF;
+}
+
+[data-testid="stBaseButton-secondary"] {
+    background: #FFFFFF;
+    color: #17467D;
+    border: 1px solid #B9CBE0;
+}
+
+[data-testid="stBaseButton-secondary"]:hover {
+    background: #EAF3FF;
+    border-color: #4386DA;
+    color: #0B4E9D;
+}
+
+[data-baseweb="input"] > div,
+[data-baseweb="select"] > div,
+[data-baseweb="textarea"] {
+    background: #FFFFFF;
+    border-color: #CED9E8;
+    border-radius: 9px;
+}
+
+[data-baseweb="input"] > div:focus-within,
+[data-baseweb="select"] > div:focus-within,
+[data-baseweb="textarea"]:focus-within {
+    border-color: #18A6B8;
+    box-shadow: 0 0 0 1px #18A6B8;
+}
+
+hr {
+    border-color: #D9E2EE;
+}
+
+[data-testid="stMetric"] {
+    background: #FFFFFF;
+    border: 1px solid #DCE5F0;
+    border-top: 3px solid #18A6B8;
+    border-radius: 10px;
+    padding: .85rem 1rem;
+    box-shadow: 0 3px 10px rgba(17,43,78,.055);
+}
+
+[data-baseweb="tab-list"] {
+    gap: .35rem;
+    border-bottom: 1px solid #D9E2EE;
+}
+
+[data-baseweb="tab"] {
+    border-radius: 8px 8px 0 0;
+    color: #53657D;
+}
+
+[data-baseweb="tab"][aria-selected="true"] {
+    color: #075ECF;
+    background: #E7F1FF;
+}
+
+[data-testid="stDataFrame"], [data-testid="stTable"] {
+    border: 1px solid #D9E2EE;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+[data-testid="stExpander"] {
+    background: #FFFFFF;
+    border: 1px solid #D9E2EE;
+    border-radius: 10px;
+}
+
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #102C50 0%, #0B2342 100%);
+    border-right: 3px solid #18A6B8;
+}
+
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] button,
+[data-testid="stSidebar"] label {
+    font-family: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
+}
+
+/* Preserve Streamlit's icon font; overriding it exposes names such as
+   keyboard_double_arrow_left as plain text. */
+[data-testid="stSidebar"] .material-symbols-rounded,
+[data-testid="stSidebar"] [class*="material-symbols"] {
+    font-family: "Material Symbols Rounded" !important;
+}
+
+[data-testid="stSidebar"] .stMarkdown,
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    color: #FFFFFF;
+}
+
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {
+    color: #A9BED5;
+}
+
+[data-testid="stSidebar"] hr {
+    border-color: rgba(255,255,255,.16);
+}
+
+[data-testid="stSidebar"] div.stButton > button {
+    width: 100%;
+    min-height: 43px;
+    justify-content: flex-start;
+    padding-left: 1rem;
+    border-radius: 8px;
+    font-size: 15px;
+    background: transparent;
+    color: #D8E6F4;
+    border: 1px solid transparent;
+}
+
+[data-testid="stSidebar"] div.stButton > button[kind="primary"] {
+    background: linear-gradient(90deg, #1267E5 0%, #168FD4 100%);
+    color: #FFFFFF;
+    border-color: #3BA8E8;
+    box-shadow: inset 4px 0 0 #FF6B4A;
+}
+
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"] {
+    background: linear-gradient(90deg, #1267E5 0%, #168FD4 100%);
+    color: #FFFFFF;
+    border-color: #3BA8E8;
+    box-shadow: inset 4px 0 0 #FF6B4A;
+}
+
+[data-testid="stSidebar"] div.stButton > button:not(:disabled):hover {
+    background: rgba(255,255,255,.09);
+    color: #FFFFFF;
+    border-color: rgba(75,190,220,.6);
+}
+
+[data-testid="stSidebar"] div.stButton > button[kind="primary"]:hover,
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"]:hover {
+    background: linear-gradient(90deg, #0E5BCF 0%, #117FBF 100%);
+    color: #FFFFFF;
+    border-color: #52C7E0;
+    box-shadow: inset 4px 0 0 #FF6B4A;
+}
+
+[data-testid="stSidebar"] h2 {
+    font-family: "Bahnschrift", "Aptos Display", "Segoe UI", sans-serif;
+    letter-spacing: .01em;
+}
+
+[data-testid="stSidebar"] div.stButton > button:disabled {
+    background: rgba(255,255,255,.045);
+    color: #7890A9;
+    border: 1px dashed #49617A;
+    opacity: 1;
+}
 </style>
-""", unsafe_allow_html=True)
-
-# ==========================================================
-# HEADER
-# ==========================================================
-
-st.title("🏃 Training Planner AI")
-
-st.caption(
-    "Machine Learning platform for training plan extraction and prediction."
+""",
+    unsafe_allow_html=True,
 )
 
-st.divider()
 
-# ==========================================================
-# STEP 1 - UPLOAD PDF
-# ==========================================================
+def _select_main_page(page):
+    """Update navigation before Streamlit renders the new page."""
+    st.session_state["main_navigation"] = page
 
-st.header("📄 Step 1 · Upload Training Plan")
 
-st.write(
-    """
-Upload a weekly training plan in **PDF** format.
-
-The PDF will be stored inside the **raw_data** folder.
-"""
-)
-
-uploaded_file = st.file_uploader(
-    "Select a PDF",
-    type=["pdf"]
-)
-
-pdf_uploaded = False
-saved_path = None
-
-if uploaded_file is not None:
-
-    success, message, saved_path = save_pdf(uploaded_file)
-
-    if success:
-
-        pdf_uploaded = True
-
-        st.success(message)
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.metric("Filename", uploaded_file.name)
-
-        with col2:
-            st.metric(
-                "Size",
-                f"{uploaded_file.size/1024:.1f} KB"
-            )
-
-        st.info(f"Saved in:\n\n{saved_path}")
-
-    else:
-
-        st.error(message)
-
-st.divider()
-
-# ==========================================================
-# STEP 2 - PROCESS DATASET
-# ==========================================================
-
-st.header("🤖 Step 2 · Process Training Plan")
-
-st.write(
-    """
-Extract the information from the uploaded PDF and convert it into the
-standardized JSON format used by the predictive model.
-"""
-)
-
-if pdf_uploaded:
-
-    if st.button(
-        "🚀 Process training plan and add to dataset",
-        use_container_width=True
-    ):
-        
-        with st.spinner("Processing training plan..."):
-
-            success, message = process_pending_pdfs()
-
-            if success:
-                st.success(message)
-            else:
-                st.error(message)
-
-st.divider()
-
-# ==========================================================
-# STEP 3 - RETRAIN MODELS
-# ==========================================================
-
-st.header("🧠 Step 3 · Train Evaluation Models")
-
-st.write(
-    """
-Train all predictive models using the chronological 80/20 split.
-
-These models are used only for metrics and pipeline style evaluation.
-"""
-)
-
-training_scripts = [
-    ("Sport", "train_sport.py"),
-    ("Session type", "train_session_type.py"),
-    ("Structured session", "train_structured.py"),
-    ("Objective family", "train_objective_family.py"),
-    ("Terrain", "train_terrain.py"),
-    ("Zones", "train_zones.py"),
-    ("Distance", "train_distance.py"),
-]
-
-processed_files = sorted(PROCESSED_DATA_DIR.glob("*.json"))
-
-dataset_dates = []
-
-for file in processed_files:
-    try:
-        dataset_dates.append(datetime.strptime(file.stem, "%Y-%m-%d").date())
-    except ValueError:
-        continue
-
-dataset_dates.sort()
-
-if dataset_dates:
-    first_date = dataset_dates[0]
-    last_date = dataset_dates[-1]
-    total_months = (
-        (last_date.year - first_date.year) * 12
-        + last_date.month
-        - first_date.month
+with st.sidebar:
+    st.markdown("## Planificador Multideporte")
+    st.caption("Entrenamiento, rendimiento y adaptación")
+    st.divider()
+    pages = (
+        "Ingestión de datos",
+        "Entrenamiento del modelo",
+        "Predicciones",
+        "Plan adaptativo",
+        "Calendario",
+        "Carga de entrenamiento",
+        "Estado del atleta",
+        "Objetivos",
     )
-    dataset_years, dataset_months = divmod(total_months, 12)
-    dataset_span = f"{dataset_years} years, {dataset_months} months"
-else:
-    first_date = None
-    last_date = None
-    dataset_span = "No data"
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.metric("Processed weeks", len(processed_files))
-
-with col2:
-    st.metric("Training steps", len(training_scripts))
-
-if dataset_dates:
-    st.markdown(
-        f"### Dataset range: {first_date.isoformat()} to "
-        f"{last_date.isoformat()}"
-    )
-    st.markdown(f"### History span: {dataset_span}")
-else:
-    st.warning("No processed JSON files are available for training.")
-
-if st.button(
-    "🔄 Train evaluation models · 80/20",
-    disabled=not processed_files,
-    use_container_width=True,
-):
-    progress = st.progress(0)
-    current_step = st.empty()
-    logs = []
-    training_failed = False
-
-    valid_sports = {"Descanso", "Trail", "Corrida", "Bici", "Kayak"}
-    normalized_files = []
-
-    current_step.info("Validating processed dataset...")
-
-    try:
-        for json_file in processed_files:
-            with open(json_file, "r", encoding="utf-8") as file:
-                week = json.load(file)
-
-            sessions = week.get("sessions", [])
-
-            if any(session.get("sport") not in valid_sports for session in sessions):
-                week = normalize_json(week)
-                week = process_structured_sessions(week)
-
-                with open(json_file, "w", encoding="utf-8") as file:
-                    json.dump(week, file, indent=4, ensure_ascii=False)
-
-                normalized_files.append(json_file.name)
-
-        if normalized_files:
-            logs.append(
-                "===== Dataset normalization =====\n"
-                + "Normalized: "
-                + ", ".join(normalized_files)
-            )
-
-    except Exception as error:
-        training_failed = True
-        logs.append(f"===== Dataset validation =====\n{error}")
-        current_step.error("Dataset validation failed.")
-
-    for index, (model_name, script_name) in enumerate(training_scripts):
-        if training_failed:
-            break
-
-        current_step.info(
-            f"Training {model_name} ({index + 1}/{len(training_scripts)})..."
-        )
-
-        script_path = PROJECT_ROOT / "ML" / "train" / script_name
-
-        result = subprocess.run(
-            [sys.executable, "-X", "utf8", str(script_path)],
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            env={
-                **os.environ,
-                "TRAIN_MODE": "evaluation",
-                "MODEL_OUTPUT_DIR": str(PROJECT_ROOT / "ML" / "models" / "evaluation"),
-            },
-        )
-
-        output = result.stdout
-        if result.stderr:
-            output += "\n" + result.stderr
-
-        if result.returncode != 0:
-            logs.append(f"\n===== {model_name} =====\n{output.strip()}")
-            training_failed = True
-            current_step.error(f"Training failed while processing {model_name}.")
-            break
-
-        summaries = re.findall(
-            r"MODEL_SUMMARY_START\s*(.*?)\s*MODEL_SUMMARY_END",
-            output,
-            flags=re.DOTALL,
-        )
-
-        if summaries:
-            logs.append(
-                f"\n===== {model_name} =====\n"
-                + "\n\n".join(summary.strip() for summary in summaries)
-            )
-        else:
-            logs.append(
-                f"\n===== {model_name} =====\n"
-                "Training completed, but no metrics summary was produced."
-            )
-
-        progress.progress((index + 1) / len(training_scripts))
-
-    with st.expander("Training logs", expanded=training_failed):
-        st.code("\n".join(logs), language="text")
-
-    if training_failed:
-        st.error("The training sequence was stopped. Check the logs above.")
-    else:
-        current_step.success("All models were trained successfully.")
-        st.success("The model files have been updated.")
-
-st.divider()
-
-# ==========================================================
-# STEP 4 - PIPELINE STYLE SCORE
-# ==========================================================
-
-st.header("📊 Step 4 · Evaluate Pipeline Style")
-
-st.write(
-    """
-Evaluate the complete prediction pipeline over the latest 30 historical
-weeks and compare its statistical style with the real training plans.
-"""
-)
-
-if st.button(
-    "📊 Run pipeline style evaluation",
-    use_container_width=True,
-):
-    evaluation_status = st.empty()
-    evaluation_status.info("Generating pipeline predictions...")
-
-    pipeline_result = subprocess.run(
-        [sys.executable, "-X", "utf8", str(PROJECT_ROOT / "ML" / "evaluate_pipeline.py")],
-        cwd=PROJECT_ROOT / "ML",
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-
-    if pipeline_result.returncode != 0:
-        evaluation_status.error("Pipeline evaluation failed.")
-        with st.expander("Evaluation error", expanded=True):
-            st.code(
-                (pipeline_result.stdout + "\n" + pipeline_result.stderr).strip(),
-                language="text",
-            )
-    else:
-        evaluation_status.info("Calculating style score...")
-
-        score_result = subprocess.run(
-            [sys.executable, "-X", "utf8", str(PROJECT_ROOT / "ML" / "style_score.py")],
-            cwd=PROJECT_ROOT / "ML",
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-
-        if score_result.returncode != 0:
-            evaluation_status.error("Style score calculation failed.")
-            with st.expander("Style score error", expanded=True):
-                st.code(
-                    (score_result.stdout + "\n" + score_result.stderr).strip(),
-                    language="text",
-                )
-        else:
-            score_output = score_result.stdout
-            global_match = re.search(
-                r"GLOBAL STYLE SCORE\s*:\s*([0-9.]+)%",
-                score_output,
-            )
-            consistency_match = re.search(
-                r"Sport-Session consistency\s*:\s*([0-9.]+)",
-                score_output,
-            )
-            joint_match = re.search(
-                r"Joint distribution\s*:\s*([0-9.]+)",
-                score_output,
-            )
-
-            component_scores = []
-            for component in (
-                "SPORT",
-                "SESSION TYPE",
-                "OBJECTIVE FAMILY",
-                "TERRAIN",
-                "ZONE",
-                "DISTANCE",
-            ):
-                component_match = re.search(
-                    rf"{re.escape(component)}\s*\n-+.*?Overall\s*:\s*([0-9.]+)",
-                    score_output,
-                    flags=re.DOTALL,
-                )
-                if component_match:
-                    component_scores.append(
-                        {
-                            "Component": component.title(),
-                            "Style score": f"{float(component_match.group(1)):.1f}%",
-                        }
-                    )
-
-            evaluation_status.success("Pipeline style evaluation completed.")
-
-            if global_match:
-                st.metric(
-                    "Global Style Score",
-                    f"{float(global_match.group(1)):.1f}%",
-                )
-
-            if component_scores:
-                st.table(component_scores)
-
-            if consistency_match and joint_match:
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric(
-                        "Sport-Session consistency",
-                        f"{float(consistency_match.group(1)):.1f}%",
-                    )
-                with col2:
-                    st.metric(
-                        "Joint distribution",
-                        f"{float(joint_match.group(1)):.1f}%",
-                    )
-
-            with st.expander("Full style score report"):
-                st.code(score_output.strip(), language="text")
-
-st.divider()
-
-# ==========================================================
-# STEP 5 - PRODUCTION MODELS
-# ==========================================================
-
-st.header("🎯 Step 5 · Train Production Models")
-
-st.write(
-    """
-Train the definitive models with 100% of the historical dataset.
-
-These models will be used exclusively to predict the next unknown week.
-"""
-)
-
-if st.button(
-    "🎯 Train production models · 100%",
-    disabled=not processed_files,
-    use_container_width=True,
-):
-    production_progress = st.progress(0)
-    production_status = st.empty()
-    production_failed = False
-
-    for index, (model_name, script_name) in enumerate(training_scripts):
-        production_status.info(
-            f"Training {model_name} with 100% of the data "
-            f"({index + 1}/{len(training_scripts)})..."
-        )
-
-        script_path = PROJECT_ROOT / "ML" / "train" / script_name
-        result = subprocess.run(
-            [sys.executable, "-X", "utf8", str(script_path)],
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            env={
-                **os.environ,
-                "TRAIN_MODE": "production",
-                "MODEL_OUTPUT_DIR": str(PROJECT_ROOT / "ML" / "models" / "production"),
-            },
-        )
-
-        if result.returncode != 0:
-            production_failed = True
-            production_status.error(f"Production training failed at {model_name}.")
-            with st.expander("Production training error", expanded=True):
-                st.code((result.stdout + "\n" + result.stderr).strip(), language="text")
-            break
-
-        production_progress.progress((index + 1) / len(training_scripts))
-
-    if not production_failed:
-        production_status.success("All production models were trained successfully.")
-        st.success("Production models now include 100% of the historical dataset.")
-
-st.divider()
-
-# ==========================================================
-# STEP 6 - NEXT WEEK PREDICTION
-# ==========================================================
-
-st.header("📅 Step 6 · Predict Next Week")
-
-st.write(
-    """
-Generate the next unknown training week using the latest four weeks as
-context and the production models trained with 100% of the history.
-"""
-)
-
-production_model_dir = PROJECT_ROOT / "ML" / "models" / "production"
-required_production_models = [
-    "sport_model.pkl",
-    "session_type_model.pkl",
-    "terrain_model.pkl",
-    "zone_model.pkl",
-    "objective_class_model.pkl",
-    "objective_class_encoder.pkl",
-    "objective_class_columns.pkl",
-    "distance_trail.pkl",
-    "distance_corrida.pkl",
-    "distance_bici.pkl",
-]
-production_ready = all(
-    (production_model_dir / filename).exists()
-    for filename in required_production_models
-)
-
-if not production_ready:
-    st.warning("Train the production models before generating the next week.")
-
-if st.button(
-    "📅 Generate next week",
-    disabled=not production_ready,
-    use_container_width=True,
-):
-    with st.spinner("Generating next week prediction..."):
-        prediction_result = subprocess.run(
-            [
-                sys.executable,
-                "-X",
-                "utf8",
-                str(PROJECT_ROOT / "ML" / "predict_next_week.py"),
-            ],
-            cwd=PROJECT_ROOT / "ML",
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-
-    if prediction_result.returncode != 0:
-        st.error("Next week prediction failed.")
-        with st.expander("Prediction error", expanded=True):
-            st.code(
-                (prediction_result.stdout + "\n" + prediction_result.stderr).strip(),
-                language="text",
-            )
-    else:
-        prediction = json.loads(prediction_result.stdout)
-        st.success(
-            f"Prediction generated for {prediction['week_start']} "
-            f"to {prediction['week_end']}."
-        )
-
-        rows = []
-        for session in prediction["sessions"]:
-            workout = session.get("template")
-            if workout is None and session.get("distance_km") is not None:
-                workout = f"{session['distance_km']} km"
-            if workout is None and session["sport"] == "Descanso":
-                workout = "Rest"
-
-            rows.append(
-                {
-                    "Date": session["date"],
-                    "Day": session["weekday"],
-                    "Sport": session["sport"],
-                    "Session type": session.get("session_type"),
-                    "Objective": session.get("objective_class"),
-                    "Terrain": session.get("terrain"),
-                    "Zone": session.get("zone"),
-                    "Workout": workout,
-                }
-            )
-
-        st.table(rows)
-        st.caption(
-            "Context weeks: " + ", ".join(prediction["context_weeks"])
-        )
-
-        prediction_json = json.dumps(prediction, indent=4, ensure_ascii=False)
-
-        with st.expander("Prediction JSON"):
-            st.code(prediction_json, language="json")
-
-        st.download_button(
-            "Download prediction JSON",
-            data=prediction_json,
-            file_name=f"prediction_{prediction['week_start']}.json",
-            mime="application/json",
+    legacy_pages = {
+        "Data ingestion": "Ingestión de datos", "Model training": "Ingestión de datos",
+        "Predictions": "Predicciones", "Training Load": "Carga de entrenamiento",
+    }
+    selected_page = st.session_state.get("main_navigation", "Ingestión de datos")
+    selected_page = legacy_pages.get(selected_page, selected_page)
+    st.session_state["main_navigation"] = selected_page
+    for page in pages:
+        frozen = page == "Entrenamiento del modelo"
+        label = page + (" · congelado" if frozen else "")
+        st.button(
+            label,
+            key=f"nav_{page}",
+            disabled=frozen,
+            type="primary" if page == selected_page and not frozen else "secondary",
             use_container_width=True,
+            on_click=_select_main_page,
+            args=(page,),
         )
+    st.divider()
+    st.caption("Los modelos están congelados para evitar reentrenamientos accidentales.")
+
+st.title(selected_page)
+
+if selected_page == "Ingestión de datos":
+    st.caption("Carga y procesa actividades Garmin y planes de entrenamiento.")
+    data_ingestion.render()
+elif selected_page == "Predicciones":
+    st.caption("Genera y revisa la próxima semana de entrenamiento.")
+    predictions.render()
+elif selected_page == "Plan adaptativo":
+    st.caption("Revisa la semana base, su contexto y la decisión adaptativa antes de aprobarla.")
+    adaptive_plan.render()
+elif selected_page == "Calendario":
+    st.caption("Revisa ciclos, sesiones previstas, actividades realizadas y carga diaria.")
+    calendar_page.render()
+elif selected_page == "Carga de entrenamiento":
+    st.caption("Compara la carga prescrita, predicha y realizada.")
+    training_load.render()
+elif selected_page == "Estado del atleta":
+    st.caption("Integra carga, recuperación, progreso y contexto personal.")
+    athlete_state.render()
+else:
+    st.caption("Define objetivos, métricas de rendimiento y sus mediciones.")
+    objectives.render()

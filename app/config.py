@@ -25,6 +25,9 @@ RAW_DATA_DIR = DATA_DIR / "raw_data"
 
 PROCESSED_DATA_DIR = DATA_DIR / "processed_data"
 
+# User-defined goals, metrics and their historical measurements
+OBJECTIVES_DATA_DIR = DATA_DIR / "objectives"
+
 # Temporary files generated during processing
 TEMP_DIR = DATA_DIR / "temp"
 
@@ -60,6 +63,7 @@ def initialize_project():
         DATA_DIR,
         RAW_DATA_DIR,
         PROCESSED_DATA_DIR,
+        OBJECTIVES_DATA_DIR,
         TEMP_DIR,
         ML_DIR,
         MODELS_DIR,
