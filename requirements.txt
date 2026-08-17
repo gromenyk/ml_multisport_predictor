@@ -1,3 +1,5 @@
+exceptiongroup; python_version < "3.11"
+garmin-fit-sdk
 joblib
 numpy
 openai
@@ -6,4 +8,5 @@ PyMuPDF
 python-dotenv
 scikit-learn
 streamlit
+streamlit-folium
 xgboost

@@ -1,0 +1,1386 @@
+{
+    "development_goals": [
+        {
+            "id": "goal_aerobic_endurance",
+            "catalog_key": "aerobic_endurance",
+            "name": "Aerobic Endurance",
+            "category": "Aerobic & Endurance",
+            "description": "Ability to sustain predominantly aerobic exercise for prolonged periods while maintaining functional performance.",
+            "applicability_tags": [
+                "general",
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Resistencia aeróbica",
+            "category_es": "Capacidad aeróbica y resistencia",
+            "description_es": "Capacidad relacionada con resistencia aeróbica. Sirve para orientar y evaluar el desarrollo dentro de «Capacidad aeróbica y resistencia» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_aerobic_efficiency",
+            "catalog_key": "aerobic_efficiency",
+            "name": "Aerobic Efficiency / Economy",
+            "category": "Aerobic & Endurance",
+            "description": "Ability to produce a given external performance at lower physiological cost, or greater external performance at a comparable physiological cost.",
+            "applicability_tags": [
+                "general",
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Eficiencia y economía aeróbica",
+            "category_es": "Capacidad aeróbica y resistencia",
+            "description_es": "Capacidad relacionada con eficiencia y economía aeróbica. Sirve para orientar y evaluar el desarrollo dentro de «Capacidad aeróbica y resistencia» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_aerobic_threshold",
+            "catalog_key": "aerobic_threshold",
+            "name": "Aerobic Threshold Performance",
+            "category": "Aerobic & Endurance",
+            "description": "Ability to sustain and produce performance around the first physiological threshold (LT1/VT1 or equivalent).",
+            "applicability_tags": [
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Rendimiento en el umbral aeróbico",
+            "category_es": "Capacidad aeróbica y resistencia",
+            "description_es": "Capacidad relacionada con rendimiento en el umbral aeróbico. Sirve para orientar y evaluar el desarrollo dentro de «Capacidad aeróbica y resistencia» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_threshold_performance",
+            "catalog_key": "threshold_performance",
+            "name": "Threshold Performance",
+            "category": "Aerobic & Endurance",
+            "description": "Ability to sustain high aerobic output around the second physiological threshold or equivalent heavy/severe-domain boundary.",
+            "applicability_tags": [
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Rendimiento en el umbral",
+            "category_es": "Capacidad aeróbica y resistencia",
+            "description_es": "Capacidad relacionada con rendimiento en el umbral. Sirve para orientar y evaluar el desarrollo dentro de «Capacidad aeróbica y resistencia» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_maximal_aerobic_capacity",
+            "catalog_key": "maximal_aerobic_capacity",
+            "name": "Maximal Aerobic Capacity",
+            "category": "Aerobic & Endurance",
+            "description": "Development of maximal aerobic energy-system capacity and performance at intensities associated with maximal oxygen uptake.",
+            "applicability_tags": [
+                "general",
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Capacidad aeróbica máxima",
+            "category_es": "Capacidad aeróbica y resistencia",
+            "description_es": "Capacidad relacionada con capacidad aeróbica máxima. Sirve para orientar y evaluar el desarrollo dentro de «Capacidad aeróbica y resistencia» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_durability",
+            "catalog_key": "durability",
+            "name": "Durability / Fatigue Resistance",
+            "category": "Durability & Fatigue Resistance",
+            "description": "Ability to preserve physiological function and external performance as exercise duration and accumulated work increase.",
+            "applicability_tags": [
+                "general",
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Durabilidad y resistencia a la fatiga",
+            "category_es": "Durabilidad y resistencia a la fatiga",
+            "description_es": "Capacidad relacionada con durabilidad y resistencia a la fatiga. Sirve para orientar y evaluar el desarrollo dentro de «Durabilidad y resistencia a la fatiga» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_muscular_fatigue_resistance",
+            "catalog_key": "muscular_fatigue_resistance",
+            "name": "Muscular Fatigue Resistance",
+            "category": "Durability & Fatigue Resistance",
+            "description": "Ability of the relevant musculature to maintain force production and functional performance during prolonged or repeated work.",
+            "applicability_tags": [
+                "general",
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Resistencia muscular a la fatiga",
+            "category_es": "Durabilidad y resistencia a la fatiga",
+            "description_es": "Capacidad relacionada con resistencia muscular a la fatiga. Sirve para orientar y evaluar el desarrollo dentro de «Durabilidad y resistencia a la fatiga» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_back_to_back_tolerance",
+            "catalog_key": "back_to_back_tolerance",
+            "name": "Back-to-Back Training Tolerance",
+            "category": "Durability & Fatigue Resistance",
+            "description": "Ability to maintain performance and tolerate training performed on consecutive days with incomplete recovery.",
+            "applicability_tags": [
+                "general",
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Tolerancia a entrenamientos en días consecutivos",
+            "category_es": "Durabilidad y resistencia a la fatiga",
+            "description_es": "Capacidad relacionada con tolerancia a entrenamientos en días consecutivos. Sirve para orientar y evaluar el desarrollo dentro de «Durabilidad y resistencia a la fatiga» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_multi_day_endurance",
+            "catalog_key": "multi_day_endurance",
+            "name": "Multi-Day Endurance",
+            "category": "Durability & Fatigue Resistance",
+            "description": "Ability to sustain functional performance across multiple consecutive days of prolonged exercise.",
+            "applicability_tags": [
+                "general",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Resistencia durante varios días",
+            "category_es": "Durabilidad y resistencia a la fatiga",
+            "description_es": "Capacidad relacionada con resistencia durante varios días. Sirve para orientar y evaluar el desarrollo dentro de «Durabilidad y resistencia a la fatiga» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_accumulated_load_tolerance",
+            "catalog_key": "accumulated_load_tolerance",
+            "name": "Accumulated Load Tolerance",
+            "category": "Durability & Fatigue Resistance",
+            "description": "Ability to tolerate high accumulated training or competition load without disproportionate deterioration in performance or recovery.",
+            "applicability_tags": [
+                "general",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Tolerancia a la carga acumulada",
+            "category_es": "Durabilidad y resistencia a la fatiga",
+            "description_es": "Capacidad relacionada con tolerancia a la carga acumulada. Sirve para orientar y evaluar el desarrollo dentro de «Durabilidad y resistencia a la fatiga» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_high_intensity_aerobic_performance",
+            "catalog_key": "high_intensity_aerobic_performance",
+            "name": "High-Intensity Aerobic Performance",
+            "category": "High Intensity & Anaerobic",
+            "description": "Ability to perform sustained or repeated work at intensities near maximal aerobic capacity.",
+            "applicability_tags": [
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Rendimiento aeróbico de alta intensidad",
+            "category_es": "Alta intensidad y capacidad anaeróbica",
+            "description_es": "Capacidad relacionada con rendimiento aeróbico de alta intensidad. Sirve para orientar y evaluar el desarrollo dentro de «Alta intensidad y capacidad anaeróbica» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_anaerobic_capacity",
+            "catalog_key": "anaerobic_capacity",
+            "name": "Anaerobic Capacity",
+            "category": "High Intensity & Anaerobic",
+            "description": "Ability to perform work requiring substantial anaerobic energy contribution.",
+            "applicability_tags": [
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Capacidad anaeróbica",
+            "category_es": "Alta intensidad y capacidad anaeróbica",
+            "description_es": "Capacidad relacionada con capacidad anaeróbica. Sirve para orientar y evaluar el desarrollo dentro de «Alta intensidad y capacidad anaeróbica» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_anaerobic_power",
+            "catalog_key": "anaerobic_power",
+            "name": "Anaerobic Power",
+            "category": "High Intensity & Anaerobic",
+            "description": "Ability to generate very high external output during short-duration efforts.",
+            "applicability_tags": [
+                "running",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Kayak"
+            ],
+            "name_es": "Potencia anaeróbica",
+            "category_es": "Alta intensidad y capacidad anaeróbica",
+            "description_es": "Capacidad relacionada con potencia anaeróbica. Sirve para orientar y evaluar el desarrollo dentro de «Alta intensidad y capacidad anaeróbica» en Bici, Corrida, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_repeated_high_intensity_ability",
+            "catalog_key": "repeated_high_intensity_ability",
+            "name": "Repeated High-Intensity Ability",
+            "category": "High Intensity & Anaerobic",
+            "description": "Ability to repeat high-intensity efforts while limiting performance deterioration across repetitions.",
+            "applicability_tags": [
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Capacidad para repetir esfuerzos de alta intensidad",
+            "category_es": "Alta intensidad y capacidad anaeróbica",
+            "description_es": "Capacidad relacionada con capacidad para repetir esfuerzos de alta intensidad. Sirve para orientar y evaluar el desarrollo dentro de «Alta intensidad y capacidad anaeróbica» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_sprint_performance",
+            "catalog_key": "sprint_performance",
+            "name": "Sprint Performance",
+            "category": "High Intensity & Anaerobic",
+            "description": "Ability to produce maximal or near-maximal performance during very short-duration efforts.",
+            "applicability_tags": [
+                "running",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Kayak"
+            ],
+            "name_es": "Rendimiento en sprint",
+            "category_es": "Alta intensidad y capacidad anaeróbica",
+            "description_es": "Capacidad relacionada con rendimiento en sprint. Sirve para orientar y evaluar el desarrollo dentro de «Alta intensidad y capacidad anaeróbica» en Bici, Corrida, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_maximal_strength",
+            "catalog_key": "maximal_strength",
+            "name": "Maximal Strength",
+            "category": "Strength & Neuromuscular",
+            "description": "Ability of the neuromuscular system to produce maximal force.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Fuerza máxima",
+            "category_es": "Fuerza y capacidad neuromuscular",
+            "description_es": "Capacidad relacionada con fuerza máxima. Sirve para orientar y evaluar el desarrollo dentro de «Fuerza y capacidad neuromuscular» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_relative_strength",
+            "catalog_key": "relative_strength",
+            "name": "Relative Strength",
+            "category": "Strength & Neuromuscular",
+            "description": "Force-producing capacity relative to body mass.",
+            "applicability_tags": [
+                "general",
+                "running",
+                "trail",
+                "cycling",
+                "mtb"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Fuerza relativa al peso",
+            "category_es": "Fuerza y capacidad neuromuscular",
+            "description_es": "Capacidad relacionada con fuerza relativa al peso. Sirve para orientar y evaluar el desarrollo dentro de «Fuerza y capacidad neuromuscular» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_muscular_endurance",
+            "catalog_key": "muscular_endurance",
+            "name": "Muscular Endurance",
+            "category": "Strength & Neuromuscular",
+            "description": "Ability to sustain or repeatedly produce submaximal muscular force.",
+            "applicability_tags": [
+                "general",
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Resistencia muscular",
+            "category_es": "Fuerza y capacidad neuromuscular",
+            "description_es": "Capacidad relacionada con resistencia muscular. Sirve para orientar y evaluar el desarrollo dentro de «Fuerza y capacidad neuromuscular» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_explosive_strength",
+            "catalog_key": "explosive_strength",
+            "name": "Explosive Strength",
+            "category": "Strength & Neuromuscular",
+            "description": "Ability to develop force rapidly.",
+            "applicability_tags": [
+                "general",
+                "running",
+                "trail"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Fuerza explosiva",
+            "category_es": "Fuerza y capacidad neuromuscular",
+            "description_es": "Capacidad relacionada con fuerza explosiva. Sirve para orientar y evaluar el desarrollo dentro de «Fuerza y capacidad neuromuscular» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_neuromuscular_power",
+            "catalog_key": "neuromuscular_power",
+            "name": "Neuromuscular Power",
+            "category": "Strength & Neuromuscular",
+            "description": "Ability to produce high mechanical work or force at high velocity.",
+            "applicability_tags": [
+                "general",
+                "running",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Potencia neuromuscular",
+            "category_es": "Fuerza y capacidad neuromuscular",
+            "description_es": "Capacidad relacionada con potencia neuromuscular. Sirve para orientar y evaluar el desarrollo dentro de «Fuerza y capacidad neuromuscular» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_reactive_strength",
+            "catalog_key": "reactive_strength",
+            "name": "Reactive Strength",
+            "category": "Strength & Neuromuscular",
+            "description": "Ability to effectively use the stretch-shortening cycle during rapid eccentric-concentric actions.",
+            "applicability_tags": [
+                "running",
+                "trail"
+            ],
+            "disciplines": [
+                "Corrida",
+                "Trail"
+            ],
+            "name_es": "Fuerza reactiva",
+            "category_es": "Fuerza y capacidad neuromuscular",
+            "description_es": "Capacidad relacionada con fuerza reactiva. Sirve para orientar y evaluar el desarrollo dentro de «Fuerza y capacidad neuromuscular» en Corrida, Trail. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_neuromuscular_durability",
+            "catalog_key": "neuromuscular_durability",
+            "name": "Neuromuscular Durability",
+            "category": "Strength & Neuromuscular",
+            "description": "Ability to preserve neuromuscular function and force-production characteristics under accumulated fatigue.",
+            "applicability_tags": [
+                "general",
+                "running",
+                "trail",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Durabilidad neuromuscular",
+            "category_es": "Fuerza y capacidad neuromuscular",
+            "description_es": "Capacidad relacionada con durabilidad neuromuscular. Sirve para orientar y evaluar el desarrollo dentro de «Fuerza y capacidad neuromuscular» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_flat_running_performance",
+            "catalog_key": "flat_running_performance",
+            "name": "Flat Running Performance",
+            "category": "Running & Trail",
+            "description": "Ability to run effectively and efficiently on flat or low-gradient terrain.",
+            "applicability_tags": [
+                "running",
+                "trail"
+            ],
+            "disciplines": [
+                "Corrida",
+                "Trail"
+            ],
+            "name_es": "Rendimiento de carrera en plano",
+            "category_es": "Carrera y trail",
+            "description_es": "Capacidad relacionada con rendimiento de carrera en plano. Sirve para orientar y evaluar el desarrollo dentro de «Carrera y trail» en Corrida, Trail. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_uphill_running_performance",
+            "catalog_key": "uphill_running_performance",
+            "name": "Uphill Running Performance",
+            "category": "Running & Trail",
+            "description": "Ability to produce effective running performance on positive gradients.",
+            "applicability_tags": [
+                "running",
+                "trail"
+            ],
+            "disciplines": [
+                "Corrida",
+                "Trail"
+            ],
+            "name_es": "Rendimiento de carrera en subida",
+            "category_es": "Carrera y trail",
+            "description_es": "Capacidad relacionada con rendimiento de carrera en subida. Sirve para orientar y evaluar el desarrollo dentro de «Carrera y trail» en Corrida, Trail. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_uphill_hiking_performance",
+            "catalog_key": "uphill_hiking_performance",
+            "name": "Uphill Hiking Performance",
+            "category": "Running & Trail",
+            "description": "Ability to move efficiently at walking or hiking gait on steep positive gradients.",
+            "applicability_tags": [
+                "trail",
+                "trekking"
+            ],
+            "disciplines": [
+                "Trail"
+            ],
+            "name_es": "Rendimiento caminando en subida",
+            "category_es": "Carrera y trail",
+            "description_es": "Capacidad relacionada con rendimiento caminando en subida. Sirve para orientar y evaluar el desarrollo dentro de «Carrera y trail» en Trail. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_vertical_climbing_performance",
+            "catalog_key": "vertical_climbing_performance",
+            "name": "Vertical Climbing Performance",
+            "category": "Vertical Performance",
+            "description": "Ability to gain elevation efficiently through running, hiking, road cycling, or mountain biking under discipline-specific conditions.",
+            "applicability_tags": [
+                "running",
+                "trail",
+                "trekking",
+                "cycling",
+                "mtb"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail"
+            ],
+            "name_es": "Rendimiento en ascenso vertical",
+            "category_es": "Rendimiento vertical multidisciplina",
+            "description_es": "Capacidad para ganar desnivel eficientemente en Corrida, Trail, ciclismo de ruta o MTB bajo condiciones comparables y específicas de cada disciplina. Su evolución se controla mediante series VAM separadas por modalidad, zona de frecuencia cardíaca y pendiente."
+        },
+        {
+            "id": "goal_downhill_running_performance",
+            "catalog_key": "downhill_running_performance",
+            "name": "Downhill Running Performance",
+            "category": "Running & Trail",
+            "description": "Ability to descend efficiently and rapidly while maintaining control and sustainable effort.",
+            "applicability_tags": [
+                "trail"
+            ],
+            "disciplines": [
+                "Trail"
+            ],
+            "name_es": "Rendimiento de carrera en bajada",
+            "category_es": "Carrera y trail",
+            "description_es": "Capacidad relacionada con rendimiento de carrera en bajada. Sirve para orientar y evaluar el desarrollo dentro de «Carrera y trail» en Trail. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_downhill_durability",
+            "catalog_key": "downhill_durability",
+            "name": "Downhill Durability",
+            "category": "Running & Trail",
+            "description": "Ability to preserve downhill performance under accumulated mechanical and physiological fatigue.",
+            "applicability_tags": [
+                "trail"
+            ],
+            "disciplines": [
+                "Trail"
+            ],
+            "name_es": "Durabilidad en bajada",
+            "category_es": "Carrera y trail",
+            "description_es": "Capacidad relacionada con durabilidad en bajada. Sirve para orientar y evaluar el desarrollo dentro de «Carrera y trail» en Trail. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_technical_terrain_performance",
+            "catalog_key": "technical_terrain_performance",
+            "name": "Technical Terrain Performance",
+            "category": "Running & Trail",
+            "description": "Ability to maintain effective locomotion on irregular, technically demanding terrain.",
+            "applicability_tags": [
+                "trail",
+                "trekking"
+            ],
+            "disciplines": [
+                "Trail"
+            ],
+            "name_es": "Rendimiento en terreno técnico",
+            "category_es": "Carrera y trail",
+            "description_es": "Capacidad relacionada con rendimiento en terreno técnico. Sirve para orientar y evaluar el desarrollo dentro de «Carrera y trail» en Trail. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_cycling_endurance",
+            "catalog_key": "cycling_endurance",
+            "name": "Cycling Endurance",
+            "category": "Cycling & MTB",
+            "description": "Ability to sustain cycling performance for prolonged periods.",
+            "applicability_tags": [
+                "cycling",
+                "mtb"
+            ],
+            "disciplines": [
+                "Bici"
+            ],
+            "name_es": "Resistencia en ciclismo",
+            "category_es": "Ciclismo y MTB",
+            "description_es": "Capacidad relacionada con resistencia en ciclismo. Sirve para orientar y evaluar el desarrollo dentro de «Ciclismo y MTB» en Bici. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_cycling_efficiency",
+            "catalog_key": "cycling_efficiency",
+            "name": "Cycling Efficiency",
+            "category": "Cycling & MTB",
+            "description": "Ability to produce cycling performance at reduced physiological cost.",
+            "applicability_tags": [
+                "cycling",
+                "mtb"
+            ],
+            "disciplines": [
+                "Bici"
+            ],
+            "name_es": "Eficiencia en ciclismo",
+            "category_es": "Ciclismo y MTB",
+            "description_es": "Capacidad relacionada con eficiencia en ciclismo. Sirve para orientar y evaluar el desarrollo dentro de «Ciclismo y MTB» en Bici. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_mtb_technical_performance",
+            "catalog_key": "mtb_technical_performance",
+            "name": "MTB Technical Performance",
+            "category": "Cycling & MTB",
+            "description": "Ability to maintain effective and controlled riding performance on technically demanding off-road terrain.",
+            "applicability_tags": [
+                "mtb"
+            ],
+            "disciplines": [
+                "Bici"
+            ],
+            "name_es": "Rendimiento técnico en MTB",
+            "category_es": "Ciclismo y MTB",
+            "description_es": "Capacidad relacionada con rendimiento técnico en mtb. Sirve para orientar y evaluar el desarrollo dentro de «Ciclismo y MTB» en Bici. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_kayak_endurance",
+            "catalog_key": "kayak_endurance",
+            "name": "Kayak Endurance",
+            "category": "Kayak & Paddling",
+            "description": "Ability to sustain paddling performance for prolonged periods.",
+            "applicability_tags": [
+                "kayak"
+            ],
+            "disciplines": [
+                "Kayak"
+            ],
+            "name_es": "Resistencia en kayak",
+            "category_es": "Kayak y remada",
+            "description_es": "Capacidad relacionada con resistencia en kayak. Sirve para orientar y evaluar el desarrollo dentro de «Kayak y remada» en Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_kayak_efficiency",
+            "catalog_key": "kayak_efficiency",
+            "name": "Kayak Efficiency",
+            "category": "Kayak & Paddling",
+            "description": "Ability to produce paddling performance at reduced physiological cost.",
+            "applicability_tags": [
+                "kayak"
+            ],
+            "disciplines": [
+                "Kayak"
+            ],
+            "name_es": "Eficiencia en kayak",
+            "category_es": "Kayak y remada",
+            "description_es": "Capacidad relacionada con eficiencia en kayak. Sirve para orientar y evaluar el desarrollo dentro de «Kayak y remada» en Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_kayak_muscular_endurance",
+            "catalog_key": "kayak_muscular_endurance",
+            "name": "Kayak-Specific Muscular Endurance",
+            "category": "Kayak & Paddling",
+            "description": "Ability of the musculature involved in paddling to sustain repeated force production during prolonged exercise.",
+            "applicability_tags": [
+                "kayak"
+            ],
+            "disciplines": [
+                "Kayak"
+            ],
+            "name_es": "Resistencia muscular específica de kayak",
+            "category_es": "Kayak y remada",
+            "description_es": "Capacidad relacionada con resistencia muscular específica de kayak. Sirve para orientar y evaluar el desarrollo dentro de «Kayak y remada» en Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_kayak_technical_efficiency",
+            "catalog_key": "kayak_technical_efficiency",
+            "name": "Kayak Technical Efficiency",
+            "category": "Kayak & Paddling",
+            "description": "Ability to translate physiological and muscular effort into effective propulsion and boat control.",
+            "applicability_tags": [
+                "kayak"
+            ],
+            "disciplines": [
+                "Kayak"
+            ],
+            "name_es": "Eficiencia técnica en kayak",
+            "category_es": "Kayak y remada",
+            "description_es": "Capacidad relacionada con eficiencia técnica en kayak. Sirve para orientar y evaluar el desarrollo dentro de «Kayak y remada» en Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_cross_discipline_endurance",
+            "catalog_key": "cross_discipline_endurance",
+            "name": "Cross-Discipline Endurance",
+            "category": "Multisport & Expedition",
+            "description": "Ability to maintain endurance performance when prolonged workload is distributed across multiple disciplines.",
+            "applicability_tags": [
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Resistencia entre disciplinas",
+            "category_es": "Multideporte y expedición",
+            "description_es": "Capacidad relacionada con resistencia entre disciplinas. Sirve para orientar y evaluar el desarrollo dentro de «Multideporte y expedición» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_cross_discipline_fatigue_resistance",
+            "catalog_key": "cross_discipline_fatigue_resistance",
+            "name": "Cross-Discipline Fatigue Resistance",
+            "category": "Multisport & Expedition",
+            "description": "Ability to limit the negative effect of accumulated work in one discipline on subsequent performance in another.",
+            "applicability_tags": [
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Resistencia a la fatiga entre disciplinas",
+            "category_es": "Multideporte y expedición",
+            "description_es": "Capacidad relacionada con resistencia a la fatiga entre disciplinas. Sirve para orientar y evaluar el desarrollo dentro de «Multideporte y expedición» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_discipline_transition_performance",
+            "catalog_key": "discipline_transition_performance",
+            "name": "Discipline Transition Performance",
+            "category": "Multisport & Expedition",
+            "description": "Ability to maintain effective performance when transitioning between different exercise modalities.",
+            "applicability_tags": [
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Rendimiento en transiciones entre disciplinas",
+            "category_es": "Multideporte y expedición",
+            "description_es": "Capacidad relacionada con rendimiento en transiciones entre disciplinas. Sirve para orientar y evaluar el desarrollo dentro de «Multideporte y expedición» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_discipline_balance",
+            "catalog_key": "discipline_balance",
+            "name": "Discipline Balance",
+            "category": "Multisport & Expedition",
+            "description": "Maintain an appropriate distribution of preparedness across the disciplines required by the target event.",
+            "applicability_tags": [
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Equilibrio entre disciplinas",
+            "category_es": "Multideporte y expedición",
+            "description_es": "Capacidad relacionada con equilibrio entre disciplinas. Sirve para orientar y evaluar el desarrollo dentro de «Multideporte y expedición» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_expedition_endurance",
+            "catalog_key": "expedition_endurance",
+            "name": "Expedition Endurance",
+            "category": "Multisport & Expedition",
+            "description": "Ability to sustain prolonged multisport performance across expedition-scale events lasting multiple days.",
+            "applicability_tags": [
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Resistencia en expediciones",
+            "category_es": "Multideporte y expedición",
+            "description_es": "Capacidad relacionada con resistencia en expediciones. Sirve para orientar y evaluar el desarrollo dentro de «Multideporte y expedición» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_recovery_between_days",
+            "catalog_key": "recovery_between_days",
+            "name": "Recovery Between Days",
+            "category": "Multisport & Expedition",
+            "description": "Ability to restore sufficient functional capacity between consecutive days or stages of prolonged exercise.",
+            "applicability_tags": [
+                "general",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Recuperación entre días",
+            "category_es": "Multideporte y expedición",
+            "description_es": "Capacidad relacionada con recuperación entre días. Sirve para orientar y evaluar el desarrollo dentro de «Multideporte y expedición» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_heat_tolerance",
+            "catalog_key": "heat_tolerance",
+            "name": "Heat Tolerance",
+            "category": "Environmental Performance",
+            "description": "Ability to sustain performance and physiological regulation during exercise in hot environments.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Tolerancia al calor",
+            "category_es": "Rendimiento ambiental",
+            "description_es": "Capacidad relacionada con tolerancia al calor. Sirve para orientar y evaluar el desarrollo dentro de «Rendimiento ambiental» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_cold_environment_performance",
+            "catalog_key": "cold_environment_performance",
+            "name": "Cold-Environment Performance",
+            "category": "Environmental Performance",
+            "description": "Ability to maintain functional performance during prolonged exercise in cold conditions.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Rendimiento en ambientes fríos",
+            "category_es": "Rendimiento ambiental",
+            "description_es": "Capacidad relacionada con rendimiento en ambientes fríos. Sirve para orientar y evaluar el desarrollo dentro de «Rendimiento ambiental» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_altitude_tolerance",
+            "catalog_key": "altitude_tolerance",
+            "name": "Altitude Tolerance",
+            "category": "Environmental Performance",
+            "description": "Ability to maintain functional performance under reduced oxygen availability at altitude.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Tolerancia a la altitud",
+            "category_es": "Rendimiento ambiental",
+            "description_es": "Capacidad relacionada con tolerancia a la altitud. Sirve para orientar y evaluar el desarrollo dentro de «Rendimiento ambiental» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_night_performance",
+            "catalog_key": "night_performance",
+            "name": "Night Performance",
+            "category": "Environmental Performance",
+            "description": "Ability to maintain effective physical and technical performance during prolonged nighttime activity.",
+            "applicability_tags": [
+                "general",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Rendimiento nocturno",
+            "category_es": "Rendimiento ambiental",
+            "description_es": "Capacidad relacionada con rendimiento nocturno. Sirve para orientar y evaluar el desarrollo dentro de «Rendimiento ambiental» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_fueling_tolerance",
+            "catalog_key": "fueling_tolerance",
+            "name": "Fueling Tolerance During Exercise",
+            "category": "Fueling & Ultra-Endurance",
+            "description": "Ability to consume and tolerate sufficient nutrition during prolonged exercise while maintaining functional performance.",
+            "applicability_tags": [
+                "general",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Tolerancia a la alimentación durante el ejercicio",
+            "category_es": "Nutrición y ultraresistencia",
+            "description_es": "Capacidad relacionada con tolerancia a la alimentación durante el ejercicio. Sirve para orientar y evaluar el desarrollo dentro de «Nutrición y ultraresistencia» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_gastrointestinal_tolerance",
+            "catalog_key": "gastrointestinal_tolerance",
+            "name": "Gastrointestinal Tolerance",
+            "category": "Fueling & Ultra-Endurance",
+            "description": "Ability to tolerate food and fluid intake during prolonged exercise with minimal gastrointestinal disruption.",
+            "applicability_tags": [
+                "general",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Tolerancia gastrointestinal",
+            "category_es": "Nutrición y ultraresistencia",
+            "description_es": "Capacidad relacionada con tolerancia gastrointestinal. Sirve para orientar y evaluar el desarrollo dentro de «Nutrición y ultraresistencia» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_hydration_management",
+            "catalog_key": "hydration_management",
+            "name": "Hydration Management",
+            "category": "Fueling & Ultra-Endurance",
+            "description": "Ability to execute an appropriate hydration strategy during prolonged exercise under relevant environmental conditions.",
+            "applicability_tags": [
+                "general",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Gestión de la hidratación",
+            "category_es": "Nutrición y ultraresistencia",
+            "description_es": "Capacidad relacionada con gestión de la hidratación. Sirve para orientar y evaluar el desarrollo dentro de «Nutrición y ultraresistencia» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_training_load_tolerance",
+            "catalog_key": "training_load_tolerance",
+            "name": "Training Load Tolerance",
+            "category": "Training Tolerance & Recovery",
+            "description": "Ability to tolerate and positively respond to training load without disproportionate deterioration in function.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Tolerancia a la carga de entrenamiento",
+            "category_es": "Tolerancia al entrenamiento y recuperación",
+            "description_es": "Capacidad relacionada con tolerancia a la carga de entrenamiento. Sirve para orientar y evaluar el desarrollo dentro de «Tolerancia al entrenamiento y recuperación» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_recovery_capacity",
+            "catalog_key": "recovery_capacity",
+            "name": "Recovery Capacity",
+            "category": "Training Tolerance & Recovery",
+            "description": "Ability to recover functional capacity following training and competition.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Capacidad de recuperación",
+            "category_es": "Tolerancia al entrenamiento y recuperación",
+            "description_es": "Capacidad relacionada con capacidad de recuperación. Sirve para orientar y evaluar el desarrollo dentro de «Tolerancia al entrenamiento y recuperación» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_chronic_training_tolerance",
+            "catalog_key": "chronic_training_tolerance",
+            "name": "Chronic Training Tolerance",
+            "category": "Training Tolerance & Recovery",
+            "description": "Ability to sustain repeated training exposure over extended periods while maintaining functional capacity.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Tolerancia crónica al entrenamiento",
+            "category_es": "Tolerancia al entrenamiento y recuperación",
+            "description_es": "Capacidad relacionada con tolerancia crónica al entrenamiento. Sirve para orientar y evaluar el desarrollo dentro de «Tolerancia al entrenamiento y recuperación» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_mobility",
+            "catalog_key": "mobility",
+            "name": "Mobility",
+            "category": "Supporting Physical Capacities",
+            "description": "Ability to actively move through ranges of motion required by the target activity.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Movilidad",
+            "category_es": "Capacidades físicas complementarias",
+            "description_es": "Capacidad relacionada con movilidad. Sirve para orientar y evaluar el desarrollo dentro de «Capacidades físicas complementarias» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_flexibility",
+            "catalog_key": "flexibility",
+            "name": "Flexibility",
+            "category": "Supporting Physical Capacities",
+            "description": "Available passive range of motion relevant to movement demands.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Flexibilidad",
+            "category_es": "Capacidades físicas complementarias",
+            "description_es": "Capacidad relacionada con flexibilidad. Sirve para orientar y evaluar el desarrollo dentro de «Capacidades físicas complementarias» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_postural_endurance",
+            "catalog_key": "postural_endurance",
+            "name": "Postural Endurance",
+            "category": "Supporting Physical Capacities",
+            "description": "Ability to maintain functional posture and positioning during prolonged activity.",
+            "applicability_tags": [
+                "general",
+                "cycling",
+                "mtb",
+                "kayak"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Resistencia postural",
+            "category_es": "Capacidades físicas complementarias",
+            "description_es": "Capacidad relacionada con resistencia postural. Sirve para orientar y evaluar el desarrollo dentro de «Capacidades físicas complementarias» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_trunk_endurance",
+            "catalog_key": "trunk_endurance",
+            "name": "Trunk Endurance",
+            "category": "Supporting Physical Capacities",
+            "description": "Ability of the trunk musculature to maintain functional force and control during prolonged exercise.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Resistencia del tronco",
+            "category_es": "Capacidades físicas complementarias",
+            "description_es": "Capacidad relacionada con resistencia del tronco. Sirve para orientar y evaluar el desarrollo dentro de «Capacidades físicas complementarias» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_stability",
+            "catalog_key": "stability",
+            "name": "Movement Stability",
+            "category": "Supporting Physical Capacities",
+            "description": "Ability to maintain effective movement control under relevant mechanical demands.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Estabilidad del movimiento",
+            "category_es": "Capacidades físicas complementarias",
+            "description_es": "Capacidad relacionada con estabilidad del movimiento. Sirve para orientar y evaluar el desarrollo dentro de «Capacidades físicas complementarias» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_running_technique",
+            "catalog_key": "running_technique",
+            "name": "Running Technique",
+            "category": "Technical Skills",
+            "description": "Development of movement patterns that support effective running.",
+            "applicability_tags": [
+                "running"
+            ],
+            "disciplines": [
+                "Corrida"
+            ],
+            "name_es": "Técnica de carrera",
+            "category_es": "Habilidades técnicas",
+            "description_es": "Capacidad relacionada con técnica de carrera. Sirve para orientar y evaluar el desarrollo dentro de «Habilidades técnicas» en Corrida. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_trail_technique",
+            "catalog_key": "trail_technique",
+            "name": "Trail Technique",
+            "category": "Technical Skills",
+            "description": "Ability to move effectively over variable and irregular trail terrain.",
+            "applicability_tags": [
+                "trail"
+            ],
+            "disciplines": [
+                "Trail"
+            ],
+            "name_es": "Técnica de trail",
+            "category_es": "Habilidades técnicas",
+            "description_es": "Capacidad relacionada con técnica de trail. Sirve para orientar y evaluar el desarrollo dentro de «Habilidades técnicas» en Trail. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_downhill_technique",
+            "catalog_key": "downhill_technique",
+            "name": "Downhill Technique",
+            "category": "Technical Skills",
+            "description": "Ability to descend effectively while maintaining control and appropriate movement strategy.",
+            "applicability_tags": [
+                "trail"
+            ],
+            "disciplines": [
+                "Trail"
+            ],
+            "name_es": "Técnica de bajada",
+            "category_es": "Habilidades técnicas",
+            "description_es": "Capacidad relacionada con técnica de bajada. Sirve para orientar y evaluar el desarrollo dentro de «Habilidades técnicas» en Trail. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_mtb_technical_skill",
+            "catalog_key": "mtb_technical_skill",
+            "name": "MTB Technical Skill",
+            "category": "Technical Skills",
+            "description": "Ability to control and handle the bicycle effectively across technical off-road terrain.",
+            "applicability_tags": [
+                "mtb"
+            ],
+            "disciplines": [
+                "Bici"
+            ],
+            "name_es": "Habilidad técnica en MTB",
+            "category_es": "Habilidades técnicas",
+            "description_es": "Capacidad relacionada con habilidad técnica en mtb. Sirve para orientar y evaluar el desarrollo dentro de «Habilidades técnicas» en Bici. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_kayak_technique",
+            "catalog_key": "kayak_technique",
+            "name": "Kayak Technique",
+            "category": "Technical Skills",
+            "description": "Ability to paddle and control the kayak effectively.",
+            "applicability_tags": [
+                "kayak"
+            ],
+            "disciplines": [
+                "Kayak"
+            ],
+            "name_es": "Técnica de kayak",
+            "category_es": "Habilidades técnicas",
+            "description_es": "Capacidad relacionada con técnica de kayak. Sirve para orientar y evaluar el desarrollo dentro de «Habilidades técnicas» en Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_transition_efficiency",
+            "catalog_key": "transition_efficiency",
+            "name": "Transition Efficiency",
+            "category": "Technical Skills",
+            "description": "Ability to execute discipline and equipment transitions efficiently.",
+            "applicability_tags": [
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Eficiencia en transiciones",
+            "category_es": "Habilidades técnicas",
+            "description_es": "Capacidad relacionada con eficiencia en transiciones. Sirve para orientar y evaluar el desarrollo dentro de «Habilidades técnicas» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_pacing_ability",
+            "catalog_key": "pacing_ability",
+            "name": "Pacing Ability",
+            "category": "Pacing, Navigation & Cognitive",
+            "description": "Ability to appropriately regulate effort according to event duration, terrain, conditions, and available physiological capacity.",
+            "applicability_tags": [
+                "general",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Capacidad para dosificar el esfuerzo",
+            "category_es": "Ritmo, navegación y capacidad cognitiva",
+            "description_es": "Capacidad relacionada con capacidad para dosificar el esfuerzo. Sirve para orientar y evaluar el desarrollo dentro de «Ritmo, navegación y capacidad cognitiva» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_effort_regulation",
+            "catalog_key": "effort_regulation",
+            "name": "Effort Regulation",
+            "category": "Pacing, Navigation & Cognitive",
+            "description": "Ability to maintain intended effort despite changing terrain, conditions, and accumulated fatigue.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Regulación del esfuerzo",
+            "category_es": "Ritmo, navegación y capacidad cognitiva",
+            "description_es": "Capacidad relacionada con regulación del esfuerzo. Sirve para orientar y evaluar el desarrollo dentro de «Ritmo, navegación y capacidad cognitiva» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_navigation_performance",
+            "catalog_key": "navigation_performance",
+            "name": "Navigation Performance",
+            "category": "Pacing, Navigation & Cognitive",
+            "description": "Ability to navigate accurately and efficiently using the methods required by the target event.",
+            "applicability_tags": [
+                "orienteering",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Rendimiento en navegación",
+            "category_es": "Ritmo, navegación y capacidad cognitiva",
+            "description_es": "Capacidad relacionada con rendimiento en navegación. Sirve para orientar y evaluar el desarrollo dentro de «Ritmo, navegación y capacidad cognitiva» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_navigation_under_fatigue",
+            "catalog_key": "navigation_under_fatigue",
+            "name": "Navigation Under Fatigue",
+            "category": "Pacing, Navigation & Cognitive",
+            "description": "Ability to preserve navigation accuracy and efficiency under accumulated physiological and cognitive fatigue.",
+            "applicability_tags": [
+                "orienteering",
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Navegación bajo fatiga",
+            "category_es": "Ritmo, navegación y capacidad cognitiva",
+            "description_es": "Capacidad relacionada con navegación bajo fatiga. Sirve para orientar y evaluar el desarrollo dentro de «Ritmo, navegación y capacidad cognitiva» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_decision_making_under_fatigue",
+            "catalog_key": "decision_making_under_fatigue",
+            "name": "Decision-Making Under Fatigue",
+            "category": "Pacing, Navigation & Cognitive",
+            "description": "Ability to preserve effective tactical and operational decision-making under prolonged fatigue.",
+            "applicability_tags": [
+                "multisport"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Toma de decisiones bajo fatiga",
+            "category_es": "Ritmo, navegación y capacidad cognitiva",
+            "description_es": "Capacidad relacionada con toma de decisiones bajo fatiga. Sirve para orientar y evaluar el desarrollo dentro de «Ritmo, navegación y capacidad cognitiva» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_power_to_mass_performance",
+            "catalog_key": "power_to_mass_performance",
+            "name": "Power-to-Mass / Performance-to-Mass",
+            "category": "Body Composition & Relative Performance",
+            "description": "Improve performance relative to body mass where gravitational demands make relative output relevant.",
+            "applicability_tags": [
+                "running",
+                "trail",
+                "cycling",
+                "mtb"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail"
+            ],
+            "name_es": "Potencia y rendimiento relativos al peso",
+            "category_es": "Composición corporal y rendimiento relativo",
+            "description_es": "Capacidad relacionada con potencia y rendimiento relativos al peso. Sirve para orientar y evaluar el desarrollo dentro de «Composición corporal y rendimiento relativo» en Bici, Corrida, Trail. Su evolución se controla mediante las métricas que se le asignen."
+        },
+        {
+            "id": "goal_body_composition_optimization",
+            "catalog_key": "body_composition_optimization",
+            "name": "Body Composition Optimization",
+            "category": "Body Composition & Relative Performance",
+            "description": "Maintain body composition compatible with health, recovery and the performance demands of the target sport.",
+            "applicability_tags": [
+                "general"
+            ],
+            "disciplines": [
+                "Bici",
+                "Corrida",
+                "Trail",
+                "Kayak"
+            ],
+            "name_es": "Optimización de la composición corporal",
+            "category_es": "Composición corporal y rendimiento relativo",
+            "description_es": "Capacidad relacionada con optimización de la composición corporal. Sirve para orientar y evaluar el desarrollo dentro de «Composición corporal y rendimiento relativo» en Bici, Corrida, Trail, Kayak. Su evolución se controla mediante las métricas que se le asignen."
+        }
+    ]
+}

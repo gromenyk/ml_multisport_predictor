@@ -1,28 +1,42 @@
 from pathlib import Path
+from datetime import date, timedelta
 import json
+import os
 
 
 class TrainingDataset:
 
-    def __init__(self, data_dir, context_weeks=4):
+    def __init__(self, data_dir, context_weeks=4, cutoff_date=None, planned_history_dir=None):
         self.data_dir = Path(data_dir)
+        self.planned_history_dir = Path(planned_history_dir) if planned_history_dir else None
         self.context_weeks = context_weeks
+        self.cutoff_date = cutoff_date or os.getenv("TRAINING_CUTOFF_DATE")
 
         self.weeks = self._load_weeks()
 
     def _load_weeks(self):
-        weeks = []
-
-        for file in sorted(self.data_dir.glob("*.json")):
-
-            with open(file, "r", encoding="utf-8") as f:
-                week = json.load(f)
-
-            weeks.append(week)
-
-        weeks.sort(key=lambda w: w["week_start"])
-
-        return weeks
+        by_start = {}
+        sources = ((self.data_dir, "human_plan"),)
+        if self.planned_history_dir is not None:
+            sources += ((self.planned_history_dir, "adaptive_approved"),)
+        for directory, default_source in sources:
+            if not directory.exists():
+                continue
+            for file in sorted(directory.glob("*.json")):
+                with open(file, "r", encoding="utf-8") as handle:
+                    week = json.load(handle)
+                if self.cutoff_date and week.get("week_end", "") > self.cutoff_date:
+                    continue
+                if not week.get("week_start") or not week.get("week_end"):
+                    continue
+                week = dict(week)
+                metadata = dict(week.get("metadata") or {})
+                metadata.setdefault("source", default_source)
+                week["metadata"] = metadata
+                # Adaptive-approved weeks intentionally take precedence for
+                # inference without modifying the original human plan files.
+                by_start[week["week_start"]] = week
+        return sorted(by_start.values(), key=lambda week: week["week_start"])
 
     def build_examples(self):
 
@@ -48,6 +62,19 @@ class TrainingDataset:
                 )
 
         return examples
+
+
+def validate_consecutive_context(weeks, required=4):
+    context = list(weeks[-required:])
+    if len(context) < required:
+        raise ValueError(f"Se requieren al menos {required} semanas planificadas.")
+    for previous, current in zip(context, context[1:]):
+        expected = date.fromisoformat(previous["week_end"]) + timedelta(days=1)
+        if date.fromisoformat(current["week_start"]) != expected:
+            raise ValueError(
+                f"El contexto tiene un salto entre {previous['week_end']} y {current['week_start']}."
+            )
+    return context
 
 
 if __name__ == "__main__":

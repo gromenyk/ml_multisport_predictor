@@ -13,12 +13,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from config import initialize_project
 from ui_pages import (
-    adaptive_plan,
     athlete_state,
     calendar_page,
     data_ingestion,
     objectives,
-    predictions,
+    planning,
+    segments,
     training_load,
 )
 
@@ -265,16 +265,17 @@ with st.sidebar:
     pages = (
         "Ingestión de datos",
         "Entrenamiento del modelo",
-        "Predicciones",
-        "Plan adaptativo",
+        "Planificación",
         "Calendario",
         "Carga de entrenamiento",
         "Estado del atleta",
         "Objetivos",
+        "Segmentos",
     )
     legacy_pages = {
         "Data ingestion": "Ingestión de datos", "Model training": "Ingestión de datos",
-        "Predictions": "Predicciones", "Training Load": "Carga de entrenamiento",
+        "Predictions": "Planificación", "Predicciones": "Planificación",
+        "Plan adaptativo": "Planificación", "Training Load": "Carga de entrenamiento",
     }
     selected_page = st.session_state.get("main_navigation", "Ingestión de datos")
     selected_page = legacy_pages.get(selected_page, selected_page)
@@ -299,12 +300,9 @@ st.title(selected_page)
 if selected_page == "Ingestión de datos":
     st.caption("Carga y procesa actividades Garmin y planes de entrenamiento.")
     data_ingestion.render()
-elif selected_page == "Predicciones":
-    st.caption("Genera y revisa la próxima semana de entrenamiento.")
-    predictions.render()
-elif selected_page == "Plan adaptativo":
-    st.caption("Revisa la semana base, su contexto y la decisión adaptativa antes de aprobarla.")
-    adaptive_plan.render()
+elif selected_page == "Planificación":
+    st.caption("Genera la semana base y transfórmala en el plan definitivo mediante la adaptación contextual.")
+    planning.render()
 elif selected_page == "Calendario":
     st.caption("Revisa ciclos, sesiones previstas, actividades realizadas y carga diaria.")
     calendar_page.render()
@@ -314,6 +312,9 @@ elif selected_page == "Carga de entrenamiento":
 elif selected_page == "Estado del atleta":
     st.caption("Integra carga, recuperación, progreso y contexto personal.")
     athlete_state.render()
+elif selected_page == "Segmentos":
+    st.caption("Explora recorridos FIT y analiza tramos sobre el mapa y la altimetría.")
+    segments.render()
 else:
     st.caption("Define objetivos, métricas de rendimiento y sus mediciones.")
     objectives.render()

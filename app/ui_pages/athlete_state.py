@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+import math
 
 import altair as alt
 import pandas as pd
+import pydeck as pdk
 import streamlit as st
 
 from athlete_state.state_builder import build_athlete_state, save_snapshot
 from adaptive_planning.session_feedback_store import (
+    TEMPERATURE_OPTIONS,
+    TERRAIN_CONDITION_OPTIONS,
     delete_session_feedback,
     load_session_feedback,
     save_session_feedback,
@@ -28,6 +32,9 @@ from backend.wellness_store import (
     save_availability_calendar,
     save_wellness,
 )
+from backend.segment_store import load_segments
+from backend.route_matching import load_route_families
+from backend.ui_translations import display_es
 
 
 GARMIN_SLEEP_QUALITY_LABELS = {
@@ -42,6 +49,10 @@ GARMIN_SLEEP_QUALITY_LABELS = {
 # short-term seven-record/day signal in strong blue.
 OBSERVATION_COLOR = "#7DD3FC"
 SEVEN_DAY_COLOR = "#1D4ED8"
+ZONE_COLORS = {
+    "Z1": "#60A5FA", "Z2": "#22C55E", "Z3": "#EAB308",
+    "Z4": "#F97316", "Z5": "#EF4444", "Z6": "#A855F7",
+}
 
 
 def _rerun():
@@ -72,7 +83,7 @@ def _wellness_charts(records):
     frame = frame.sort_values("Fecha").set_index("Fecha")
     columns = (
         "sleep_duration_hours", "sleep_score", "hrv_ms", "resting_hr_bpm",
-        "subjective_fatigue", "muscle_soreness", "motivation", "sleep_quality",
+        "subjective_fatigue", "muscle_fatigue", "muscle_soreness", "motivation", "sleep_quality",
     )
     for column in columns:
         if column in frame:
@@ -96,14 +107,14 @@ def _wellness_charts(records):
         right.line_chart(
             pd.DataFrame(
                 {
-                    "Sleep Score": frame["sleep_score"],
+                    "Puntuación de sueño": frame["sleep_score"],
                     "Promedio 7 registros": frame["sleep_score"].rolling(7, min_periods=2).mean(),
                 }
             ),
             color=[OBSERVATION_COLOR, SEVEN_DAY_COLOR],
         )
     else:
-        right.info("Sin Sleep Score numérico disponible.")
+        right.info("Sin puntuación numérica de sueño disponible.")
 
     st.markdown("#### Señales cardiovasculares de recuperación")
     left, right = st.columns(2)
@@ -132,9 +143,11 @@ def _wellness_charts(records):
     else:
         right.info("Sin FC en reposo disponible.")
 
+    if "muscle_fatigue" not in frame or not frame["muscle_fatigue"].notna().any():
+        frame["muscle_fatigue"] = frame.get("muscle_soreness")
     subjective = {
-        "subjective_fatigue": "Fatiga",
-        "muscle_soreness": "Dolor muscular",
+        "subjective_fatigue": "Fatiga general",
+        "muscle_fatigue": "Fatiga muscular",
         "motivation": "Motivación",
         "sleep_quality": "Calidad subjetiva del sueño",
     }
@@ -142,7 +155,7 @@ def _wellness_charts(records):
     st.markdown("#### Percepción subjetiva")
     if available:
         st.line_chart(frame[available].rename(columns=subjective))
-        st.caption("Escala 1–10. En fatiga y dolor, valores altos son menos favorables.")
+        st.caption("Escala 1–10. En ambas fatigas, valores altos son menos favorables.")
     else:
         st.info("Sin registros subjetivos disponibles.")
 
@@ -256,7 +269,7 @@ def _wellness_form():
             preview_frame = pd.DataFrame(rows).rename(
                 columns={
                     "date": "Fecha",
-                    "sleep_score": "Sleep Score",
+                    "sleep_score": "Puntuación de sueño",
                     "resting_hr_bpm": "FC reposo",
                     "hrv_ms": "VFC",
                     "garmin_sleep_quality": "Calidad Garmin",
@@ -272,7 +285,7 @@ def _wellness_form():
             st.dataframe(
                 preview_frame[
                     [
-                        "Fecha", "Sleep Score", "FC reposo", "VFC",
+                        "Fecha", "Puntuación de sueño", "FC reposo", "VFC",
                         "Calidad Garmin", "Sueño (h)", "Hora dormir", "Hora despertar",
                     ]
                 ],
@@ -313,7 +326,7 @@ def _wellness_form():
             "Sueño (horas)", value=_text_number(existing.get("sleep_duration_hours"))
         )
         sleep_score = columns[1].text_input(
-            "Sleep score (0–100)", value=_text_number(existing.get("sleep_score"))
+            "Puntuación de sueño (0–100)", value=_text_number(existing.get("sleep_score"))
         )
         quality_options = tuple(GARMIN_SLEEP_QUALITY_LABELS)
         current_quality = existing.get("garmin_sleep_quality")
@@ -322,7 +335,7 @@ def _wellness_form():
             quality_options,
             index=quality_options.index(current_quality) if current_quality in quality_options else 0,
             format_func=lambda item: GARMIN_SLEEP_QUALITY_LABELS[item],
-            help="Si ingresas Sleep Score, la categoría se calculará automáticamente.",
+            help="Si ingresas la puntuación de sueño, la categoría se calculará automáticamente.",
         )
         hrv = columns[3].text_input(
             "VFC nocturna / HRV (ms)", value=_text_number(existing.get("hrv_ms"))
@@ -333,10 +346,13 @@ def _wellness_form():
         st.markdown("#### Percepción subjetiva")
         columns = st.columns(4)
         fatigue = columns[0].text_input(
-            "Fatiga (1–10)", value=_text_number(existing.get("subjective_fatigue"))
+            "Fatiga general (1–10)", value=_text_number(existing.get("subjective_fatigue")),
+            help="Agotamiento global, falta de energía o sensación general de cansancio.",
         )
-        soreness = columns[1].text_input(
-            "Dolor muscular (1–10)", value=_text_number(existing.get("muscle_soreness"))
+        muscle_fatigue = columns[1].text_input(
+            "Fatiga muscular (1–10)",
+            value=_text_number(existing.get("muscle_fatigue", existing.get("muscle_soreness"))),
+            help="Pesadez o cansancio muscular difuso. El dolor localizado se informa aparte como molestia.",
         )
         motivation = columns[2].text_input(
             "Motivación (1–10)", value=_text_number(existing.get("motivation"))
@@ -363,7 +379,7 @@ def _wellness_form():
                     "hrv_ms": _parse_optional(hrv),
                     "resting_hr_bpm": _parse_optional(resting_hr),
                     "subjective_fatigue": _parse_optional(fatigue),
-                    "muscle_soreness": _parse_optional(soreness),
+                    "muscle_fatigue": _parse_optional(muscle_fatigue),
                     "motivation": _parse_optional(motivation),
                     "has_discomfort": discomfort,
                     "notes": notes,
@@ -382,7 +398,7 @@ def _wellness_form():
         visible = [
             "date", "sleep_duration_hours", "sleep_score", "garmin_sleep_quality", "hrv_ms",
             "resting_hr_bpm", "bed_time", "wake_time",
-            "subjective_fatigue", "muscle_soreness", "motivation",
+            "subjective_fatigue", "muscle_fatigue", "motivation",
             "has_discomfort", "notes",
         ]
         if "garmin_sleep_quality" in frame:
@@ -595,7 +611,7 @@ def _summary(state):
     training = state["training"]
     recovery = state["recovery"]
     interpretation = state["interpretation"]
-    columns = st.columns(4)
+    columns = st.columns(3)
     columns[0].metric(
         "Readiness descriptivo",
         interpretation["readiness_label"].capitalize(),
@@ -605,10 +621,6 @@ def _summary(state):
     columns[2].metric(
         "Carga habitual 42d",
         _fmt(training["chronic_load_42d_equivalent"], 0),
-    )
-    columns[3].metric(
-        "Completitud recuperación",
-        _fmt(recovery["data_completeness"] * 100, 0, "%"),
     )
     st.caption(interpretation["note"])
     left, right = st.columns(2)
@@ -637,7 +649,8 @@ def _summary(state):
         ),
         "HRV": _fmt(latest.get("hrv_ms"), 1, " ms"),
         "FC reposo": _fmt(latest.get("resting_hr_bpm"), 0, " bpm"),
-        "Fatiga": _fmt(latest.get("subjective_fatigue"), 0, "/10"),
+        "Fatiga general": _fmt(latest.get("subjective_fatigue"), 0, "/10"),
+        "Fatiga muscular": _fmt(latest.get("muscle_fatigue"), 0, "/10"),
     }
     st.dataframe(pd.DataFrame([recovery_values]), use_container_width=True, hide_index=True)
 
@@ -865,6 +878,115 @@ def _training_tab(state):
     )
 
 
+def _geographic_entity(series):
+    values = load_segments() if series["entity_type"] == "segment" else load_route_families()
+    return next((item for item in values if item.get("id") == series["entity_id"]), None)
+
+
+def _render_geographic_detail(series):
+    entity = _geographic_entity(series)
+    geometry = (entity or {}).get("geometry", [])
+    color = ZONE_COLORS.get(series["zone"], "#1267E5")
+    st.markdown(f"#### {series['name']} · {series['zone']}")
+    st.caption(
+        f"{'Segmento' if series['entity_type'] == 'segment' else 'Ruta'} · "
+        f"{series.get('discipline') or '—'} · {series['attempts']} intentos · "
+        f"último: {series['latest_date']}"
+    )
+    visual, facts = st.columns([1.15, 1])
+    with visual:
+        if geometry:
+            route = [
+                {"lon": point["longitude"], "lat": point["latitude"]}
+                for point in geometry
+            ]
+            latitude_min = min(point["lat"] for point in route)
+            latitude_max = max(point["lat"] for point in route)
+            longitude_min = min(point["lon"] for point in route)
+            longitude_max = max(point["lon"] for point in route)
+            center = {
+                "lat": (latitude_min + latitude_max) / 2,
+                "lon": (longitude_min + longitude_max) / 2,
+            }
+            span = max(latitude_max - latitude_min, longitude_max - longitude_min, .003)
+            zoom = max(8.0, min(14.0, 12.0 - math.log(span / .02, 2)))
+            rgb = tuple(int(color[index:index + 2], 16) for index in (1, 3, 5))
+            st.pydeck_chart(pdk.Deck(
+                layers=[
+                    pdk.Layer(
+                        "PathLayer", data=[{"path": [[p["lon"], p["lat"]] for p in route]}],
+                        get_path="path", get_color=[*rgb, 240], get_width=7,
+                        width_min_pixels=4,
+                    ),
+                    pdk.Layer(
+                        "ScatterplotLayer",
+                        data=[
+                            {**route[0], "color": [18, 166, 184]},
+                            {**route[-1], "color": [255, 107, 74]},
+                        ],
+                        get_position="[lon, lat]", get_fill_color="color",
+                        get_radius=45, radius_min_pixels=5,
+                    ),
+                ],
+                initial_view_state=pdk.ViewState(
+                    latitude=float(center["lat"]), longitude=float(center["lon"]), zoom=zoom,
+                ),
+                map_style="light",
+            ), use_container_width=True, height=300)
+        else:
+            st.info("No hay geometría disponible para generar la miniatura.")
+    with facts:
+        first_metrics = st.columns(2)
+        first_metrics[0].metric("Velocidad actual", f"{series['current_speed_kmh']:.2f} km/h")
+        first_metrics[1].metric("Último intento", f"{series['latest_speed_kmh']:.2f} km/h")
+        second_metrics = st.columns(2)
+        second_metrics[0].metric(
+            series["primary_reference"],
+            "—" if series["primary_change_percent"] is None
+            else f"{series['primary_change_percent']:+.2f}%",
+        )
+        second_metrics[1].metric("Estado", series["primary_status"])
+        st.caption(
+            "La velocidad actual es la mediana de los últimos tres intentos de esta zona."
+        )
+        st.dataframe(pd.DataFrame([
+            {
+                "Referencia": item["label"],
+                "Velocidad (km/h)": item.get("reference"),
+                "Cambio (%)": item.get("change_percent"),
+                "Estado": item.get("status"),
+            }
+            for item in series["comparisons"].values()
+        ]), hide_index=True, use_container_width=True)
+    if geometry:
+        profile = pd.DataFrame(geometry)
+        if "altitude_meters" in profile and profile["altitude_meters"].notna().any():
+            profile["distance_km"] = profile["distance_meters"] / 1000
+            chart = alt.Chart(profile).mark_area(
+                line={"color": color, "strokeWidth": 3}, color=color, opacity=.18,
+            ).encode(
+                x=alt.X("distance_km:Q", title="Distancia (km)"),
+                y=alt.Y("altitude_meters:Q", title="Altitud (m)", scale=alt.Scale(zero=False)),
+                tooltip=[
+                    alt.Tooltip("distance_km:Q", title="Distancia", format=".2f"),
+                    alt.Tooltip("altitude_meters:Q", title="Altitud", format=".0f"),
+                ],
+            ).properties(height=190)
+            st.altair_chart(chart, use_container_width=True)
+    observations = pd.DataFrame(series.get("observations", []))
+    if len(observations) >= 2:
+        observations["date"] = pd.to_datetime(observations["date"])
+        evolution = alt.Chart(observations).mark_line(point=True, color=color).encode(
+            x=alt.X("date:T", title="Fecha"),
+            y=alt.Y("speed_kmh:Q", title="Velocidad (km/h)", scale=alt.Scale(zero=False)),
+            tooltip=[
+                alt.Tooltip("date:T", title="Fecha", format="%d/%m/%Y"),
+                alt.Tooltip("speed_kmh:Q", title="Velocidad", format=".2f"),
+            ],
+        ).properties(height=250)
+        st.altair_chart(evolution, use_container_width=True)
+
+
 def _progress_tab(state):
     progress = state["progress"]
     freshness = state.get("measurement_freshness", [])
@@ -883,6 +1005,93 @@ def _progress_tab(state):
             ]),
             use_container_width=True,
             hide_index=True,
+        )
+    geographic = state.get("geographic_progress", {})
+    geographic_series = geographic.get("eligible_series", [])
+    st.markdown("### Progreso en rutas y segmentos")
+    if geographic_series:
+        summary = geographic.get("summary", {})
+        columns = st.columns(4)
+        columns[0].metric("Series incorporadas", summary.get("eligible", 0))
+        columns[1].metric("Mejorando", summary.get("improving", 0))
+        columns[2].metric("Estables", summary.get("stable", 0))
+        columns[3].metric("En pérdida", summary.get("declining", 0))
+        filter_columns = st.columns([1.25, 1, 1, 1, 1])
+        with filter_columns[0]:
+            name_query = st.text_input(
+                "Buscar por nombre", key="geographic_progress_name_filter"
+            ).strip().casefold()
+        type_options = sorted({item["entity_type"] for item in geographic_series})
+        with filter_columns[1]:
+            selected_types = st.multiselect(
+                "Tipo", type_options, default=type_options,
+                format_func=lambda value: "Segmento" if value == "segment" else "Ruta",
+                key="geographic_progress_type_filter",
+            )
+        discipline_options = sorted({item.get("discipline") or "—" for item in geographic_series})
+        with filter_columns[2]:
+            selected_disciplines = st.multiselect(
+                "Disciplina", discipline_options, default=discipline_options,
+                key="geographic_progress_discipline_filter",
+            )
+        zone_options = sorted({item["zone"] for item in geographic_series})
+        with filter_columns[3]:
+            selected_zones = st.multiselect(
+                "Zona", zone_options, default=zone_options,
+                key="geographic_progress_zone_filter",
+            )
+        status_options = sorted({item["primary_status"] for item in geographic_series})
+        with filter_columns[4]:
+            selected_statuses = st.multiselect(
+                "Estado", status_options, default=status_options,
+                key="geographic_progress_status_filter",
+            )
+        filtered_geographic = [
+            item for item in geographic_series
+            if item["entity_type"] in selected_types
+            and (item.get("discipline") or "—") in selected_disciplines
+            and item["zone"] in selected_zones
+            and item["primary_status"] in selected_statuses
+            and (not name_query or name_query in item["name"].casefold())
+        ]
+        st.dataframe(pd.DataFrame([
+            {
+                "Tipo": "Segmento" if item["entity_type"] == "segment" else "Ruta",
+                "Nombre": item["name"],
+                "Disciplina": item.get("discipline"),
+                "Zona": item["zone"],
+                "Intentos": item["attempts"],
+                "Velocidad actual (km/h)": item["current_speed_kmh"],
+                "Referencia": item["primary_reference"],
+                "Cambio (%)": item["primary_change_percent"],
+                "Estado": item["primary_status"],
+                "Último intento": item["latest_date"],
+            }
+            for item in filtered_geographic
+        ]), hide_index=True, use_container_width=True)
+        st.caption(
+            "Sólo entran series con al menos cinco intentos, misma ruta o segmento y "
+            "misma zona observada. La velocidad actual es la mediana de los últimos tres intentos."
+        )
+        if filtered_geographic:
+            series_map = {item["series_id"]: item for item in filtered_geographic}
+            selected_series_id = st.selectbox(
+                "Consultar serie",
+                tuple(series_map),
+                format_func=lambda series_id: (
+                    f"{'Segmento' if series_map[series_id]['entity_type'] == 'segment' else 'Ruta'} · "
+                    f"{series_map[series_id]['name']} · {series_map[series_id].get('discipline') or '—'} · "
+                    f"{series_map[series_id]['zone']} · {series_map[series_id]['attempts']} intentos"
+                ),
+                key="geographic_progress_series_selector",
+            )
+            _render_geographic_detail(series_map[selected_series_id])
+        else:
+            st.info("No hay series que coincidan con los filtros seleccionados.")
+    else:
+        st.info(
+            "Ninguna serie comparable ha alcanzado todavía cinco intentos válidos "
+            "dentro de una misma zona observada."
         )
     if not progress:
         st.info("Todavía no hay mediciones calculadas.")
@@ -920,7 +1129,7 @@ def _sources_tab(state):
     latest = recovery.get("latest") or {}
     rows.extend(
         [
-            {"Variable": "Training Load", "Fuente": "FIT", "Última actualización": state["training"].get("source_generated_at"), "Estado": "Disponible"},
+            {"Variable": "Carga de entrenamiento", "Fuente": "FIT", "Última actualización": state["training"].get("source_generated_at"), "Estado": "Disponible"},
             {"Variable": "Bienestar", "Fuente": latest.get("source", "—"), "Última actualización": latest.get("date", "—"), "Estado": "Disponible" if latest else "Ausente"},
             {"Variable": "Métricas", "Fuente": "Calculada desde FIT", "Última actualización": max((item["latest_date"] for item in state["progress"].values()), default="—"), "Estado": "Disponible" if state["progress"] else "Ausente"},
             {"Variable": "Contexto personal", "Fuente": "Manual", "Última actualización": (state["context"].get("latest_manual_context") or {}).get("date", "—"), "Estado": "Disponible" if state["context"].get("latest_manual_context") else "Ausente"},
@@ -929,7 +1138,7 @@ def _sources_tab(state):
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
-def _session_feedback_tab(state):
+def render_session_feedback(state, show_memory=True, prefer_pending=False, widget_prefix=""):
     st.markdown("### Respuesta a cada entrenamiento")
     st.caption(
         "La actividad objetiva proviene del FIT. Tu evaluación permite decidir si el "
@@ -940,16 +1149,27 @@ def _session_feedback_tab(state):
         st.info("No existen actividades FIT procesadas hasta la fecha seleccionada.")
         return
     stored = {item["activity_id"]: item for item in load_session_feedback()}
+    if prefer_pending:
+        pending_sessions = sorted(
+            (item for item in sessions if item["activity_id"] not in stored),
+            key=lambda item: item.get("date", ""), reverse=True,
+        )
+        evaluated_sessions = sorted(
+            (item for item in sessions if item["activity_id"] in stored),
+            key=lambda item: item.get("date", ""), reverse=True,
+        )
+        sessions = pending_sessions + evaluated_sessions
     choices = {item["activity_id"]: item for item in sessions}
     activity_id = st.selectbox(
         "Actividad realizada",
         list(choices),
         format_func=lambda key: (
-            f"{choices[key]['date']} · {choices[key]['discipline']} · "
+            f"{'Evaluada' if key in stored else 'Pendiente'} · "
+            f"{choices[key]['date']} · {display_es(choices[key]['discipline'])} · "
             f"{choices[key]['distance_km']:.1f} km · "
             f"{choices[key]['duration_minutes']:.0f} min"
         ),
-        key="session_feedback_activity",
+        key=f"{widget_prefix}session_feedback_activity",
     )
     selected, existing = choices[activity_id], stored.get(activity_id, {})
     objective = st.columns(4)
@@ -960,6 +1180,14 @@ def _session_feedback_tab(state):
         "Tiempo pausado",
         "—" if selected.get("paused_time_share") is None
         else f"{100 * selected['paused_time_share']:.1f}%",
+    )
+    extra = st.columns(2)
+    extra[0].metric("Desnivel +", f"{selected.get('ascent_m', 0):.0f} m")
+    zone_minutes = selected.get("zone_minutes", {})
+    extra[1].metric(
+        "Tiempo por zonas",
+        " · ".join(f"{zone} {minutes:.0f} min" for zone, minutes in zone_minutes.items() if minutes)
+        or "—",
     )
     finish_options = {
         "large_reserve": "Con bastante reserva",
@@ -1002,6 +1230,7 @@ def _session_feedback_tab(state):
                 "sport": session.get("sport"), "session_type": session.get("session_type"),
                 "zone": session.get("zone"), "terrain": session.get("terrain"),
                 "distance_km": session.get("distance_km"), "template": session.get("template"),
+                "estimated_load": session.get("estimated_load"),
             }
     existing_planned = existing.get("planned_session")
     if existing_planned:
@@ -1023,6 +1252,31 @@ def _session_feedback_tab(state):
     if existing_option not in match_options:
         existing_option = "unmatched"
 
+    if existing_planned:
+        st.markdown("#### Planificado frente a realizado")
+        comparison = st.columns(3)
+        planned_distance = existing_planned.get("distance_km")
+        comparison[0].metric(
+            "Distancia planificada",
+            "—" if planned_distance is None else f"{float(planned_distance):.1f} km",
+            delta=(
+                None if planned_distance is None
+                else f"{selected['distance_km'] - float(planned_distance):+.1f} km realizados"
+            ),
+        )
+        comparison[1].metric(
+            "Sesión asociada",
+            f"{display_es(existing_planned.get('sport')) or '—'} · {existing_planned.get('zone') or '—'}",
+        )
+        comparison[2].metric(
+            "Carga realizada",
+            f"{selected['load']:.1f}",
+            delta=(
+                None if existing_planned.get("estimated_load") is None
+                else f"{selected['load'] - float(existing_planned['estimated_load']):+.1f} vs prevista"
+            ),
+        )
+
     def match_label(option):
         if option == "additional":
             return "Actividad adicional / no planificada"
@@ -1030,12 +1284,12 @@ def _session_feedback_tab(state):
             return "No corresponde a una sesión identificable"
         item = planned_options[option.split("planned::", 1)[1]]
         return (
-            f"Plan {item['date']} · {item.get('sport') or '—'} · "
-            f"{item.get('session_type') or '—'} · {item.get('zone') or '—'} · "
+            f"Plan {item['date']} · {display_es(item.get('sport')) or '—'} · "
+            f"{display_es(item.get('session_type')) or '—'} · {item.get('zone') or '—'} · "
             f"{item.get('distance_km') if item.get('distance_km') is not None else '—'} km"
         )
 
-    with st.form(f"session_feedback_form_{activity_id}"):
+    with st.form(f"{widget_prefix}session_feedback_form_{activity_id}"):
         match_choice = st.selectbox(
             "¿A qué sesión planificada corresponde?",
             match_options,
@@ -1076,6 +1330,43 @@ def _session_feedback_tab(state):
             index=discomfort_keys.index(existing.get("discomfort", "none")),
             format_func=discomfort_options.get,
         )
+        environment_columns = st.columns(2)
+        temperature_labels = {
+            "very_hot": "Muy caluroso",
+            "hot": "Caluroso",
+            "pleasant": "Agradable",
+            "cold": "Frío",
+            "very_cold": "Muy frío",
+        }
+        terrain_condition_labels = {
+            "normal": "Normal",
+            "muddy": "Barroso",
+            "snowy": "Nevado",
+        }
+        temperature_keys = [
+            "very_hot", "hot", "pleasant", "cold", "very_cold",
+        ]
+        terrain_condition_keys = ["normal", "muddy", "snowy"]
+        stored_temperature = existing.get("temperature", "pleasant")
+        stored_terrain_condition = existing.get("terrain_condition", "normal")
+        temperature = environment_columns[0].selectbox(
+            "Temperatura",
+            temperature_keys,
+            index=(
+                temperature_keys.index(stored_temperature)
+                if stored_temperature in TEMPERATURE_OPTIONS else 2
+            ),
+            format_func=temperature_labels.get,
+        )
+        terrain_condition = environment_columns[1].selectbox(
+            "Condición del terreno",
+            terrain_condition_keys,
+            index=(
+                terrain_condition_keys.index(stored_terrain_condition)
+                if stored_terrain_condition in TERRAIN_CONDITION_OPTIONS else 0
+            ),
+            format_func=terrain_condition_labels.get,
+        )
         notes = st.text_area("Comentario opcional", value=existing.get("notes", ""))
         submitted = st.form_submit_button("Guardar evaluación", use_container_width=True)
     if submitted:
@@ -1090,17 +1381,20 @@ def _session_feedback_tab(state):
                 "match_type": match_type, "planned_session": planned_session,
                 "completion_percent": completion, "rpe": rpe,
                 "finish_feeling": finish, "energy_response": energy,
-                "discomfort": discomfort, "notes": notes,
+                "discomfort": discomfort, "temperature": temperature,
+                "terrain_condition": terrain_condition, "notes": notes,
             })
         except ValueError as error:
             st.error(str(error))
         else:
-            st.success("Evaluación guardada. La memoria se actualizará al recalcular el Athlete State.")
+            st.success("Evaluación guardada. La memoria se actualizará al recalcular el Estado del atleta.")
             _rerun()
-    if existing and st.button("Eliminar evaluación", key=f"delete_session_feedback_{activity_id}"):
+    if existing and st.button("Eliminar evaluación", key=f"{widget_prefix}delete_session_feedback_{activity_id}"):
         delete_session_feedback(activity_id)
         _rerun()
 
+    if not show_memory:
+        return
     st.divider()
     st.markdown("### Memoria de progresión")
     labels = {
@@ -1112,9 +1406,9 @@ def _session_feedback_tab(state):
         latest = item.get("latest_evaluated") or {}
         longest = item.get("longest_well_tolerated") or {}
         rows.append({
-            "Disciplina": discipline, "Decisión": labels.get(item.get("action"), item.get("action")),
+            "Disciplina": display_es(discipline), "Decisión": labels.get(item.get("action"), display_es(item.get("action"))),
             "Última evaluada": latest.get("date", "—"),
-            "Respuesta": latest.get("status", "—"),
+            "Respuesta": display_es(latest.get("status", "—")),
             "Mayor distancia bien tolerada": longest.get("distance_km"),
             "Racha bien tolerada": item.get("well_tolerated_streak", 0),
             "Sin evaluación": item.get("sessions_without_feedback", 0),
@@ -1146,7 +1440,7 @@ def render():
     with progress_tab:
         _progress_tab(state)
     with feedback_tab:
-        _session_feedback_tab(state)
+        render_session_feedback(state)
     with context_tab:
         _context_form()
         st.divider()

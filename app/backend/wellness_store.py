@@ -327,6 +327,7 @@ def merge_garmin_sleep_rows(rows: list[dict[str, Any]], commit: bool = False) ->
                 "source": "garmin_csv",
                 "sleep_quality": None,
                 "subjective_fatigue": None,
+                "muscle_fatigue": None,
                 "muscle_soreness": None,
                 "motivation": None,
                 "has_discomfort": None,
@@ -455,6 +456,11 @@ def save_wellness(value: dict[str, Any]) -> None:
         "subjective_fatigue": _optional_number(
             value.get("subjective_fatigue"), 1, 10
         ),
+        "muscle_fatigue": _optional_number(
+            value.get("muscle_fatigue", value.get("muscle_soreness")), 1, 10
+        ),
+        # Campo legado: se conserva para poder abrir snapshots y registros
+        # anteriores, pero los nuevos cálculos usan muscle_fatigue.
         "muscle_soreness": _optional_number(value.get("muscle_soreness"), 1, 10),
         "motivation": _optional_number(value.get("motivation"), 1, 10),
         "has_discomfort": bool(value.get("has_discomfort", False)),

@@ -2,12 +2,17 @@
 .env
 .env.*
 !.env.example
+.streamlit/secrets.toml
+credentials*.json
+token*.json
 
 # Python caches
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .ipynb_checkpoints/
+.coverage
+htmlcov/
 
 # Virtual environments
 .venv/
@@ -20,16 +25,40 @@ data/raw_data/*
 data/processed_data/*
 !data/processed_data/.gitkeep
 data/temp/
+data/derived/
+garmin/fit_files/
+garmin/exploration/
+garmin/readable/
+garmin/activities/
+*.fit
+
+# Personal athlete state and runtime planning decisions
+data/athlete_state/
+data/planned_history/
+
+# Personal route geometry, segments and attempts
+data/segments/*
+!data/segments/.gitkeep
+
+# Reusable catalogs belong in Git; personal objectives and measurements do not
+data/objectives/*
+!data/objectives/development_goal_catalog.json
+!data/objectives/metric_catalog.json
 
 # Generated model artifacts
-ML/models/**/*.pkl
-ML/models/*.pkl
+ML/models/
+*.joblib
 
 # Generated evaluations and predictions
-ML/results/*.txt
-ML/results/*.json
+ML/results/
 ML/train/*_predictions.txt
 ML/train/zone_predictions.txt
+
+# Generated experiment inputs and outputs
+experiments/**/input/*
+!experiments/**/input/.gitkeep
+experiments/**/output/*
+!experiments/**/output/.gitkeep
 
 # Temporary, editor and OS files
 *.tmp
@@ -38,3 +67,6 @@ ML/train/zone_predictions.txt
 .idea/
 .DS_Store
 Thumbs.db
+build/
+dist/
+*.egg-info/

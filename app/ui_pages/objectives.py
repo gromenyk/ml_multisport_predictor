@@ -21,11 +21,13 @@ from metrics.orchestrator import evaluate_all_activities
 from metrics.aggregation import activity_medians
 from metrics.freshness import metric_freshness
 from metrics.registry import METRIC_REGISTRY
+from metrics.route_evaluator import elevation_profile, evaluate_route, parse_gpx
 from backend.catalog_translations import (
     explain_metric_calculation,
     translate_calculation,
     translate_required_data,
 )
+from backend.ui_translations import display_es
 from backend.heart_rate_zones_store import (
     ZONE_COLORS,
     ZONE_IDS,
@@ -234,21 +236,31 @@ def _event_form(existing=None):
             value=existing.get("characteristics", ""),
             help="Duración, desnivel, terreno, transiciones y otros detalles.",
         )
-        submitted = st.form_submit_button("Guardar evento", use_container_width=True)
+        submitted = st.form_submit_button(
+            "Guardar evento",
+            use_container_width=True,
+        )
     if submitted:
         if not name.strip():
             st.error("El nombre del evento es obligatorio.")
             return
-        save_event(
-            {
-                **({"id": existing["id"]} if existing.get("id") else {}),
-                "name": name.strip(),
-                "description": description.strip(),
-                "event_date": event_date.isoformat() if event_date else None,
-                "status": status,
-                "disciplines": disciplines,
-                "characteristics": characteristics.strip(),
-            }
+        try:
+            save_event(
+                {
+                    **({"id": existing["id"]} if existing.get("id") else {}),
+                    "name": name.strip(),
+                    "description": description.strip(),
+                    "event_date": event_date.isoformat() if event_date else None,
+                    "status": status,
+                    "disciplines": disciplines,
+                    "characteristics": characteristics.strip(),
+                }
+            )
+        except Exception as error:
+            st.error(f"No fue posible guardar el evento: {error}")
+            return
+        st.session_state["event_save_confirmation"] = (
+            f"Evento «{name.strip()}» guardado correctamente."
         )
         _rerun()
 
@@ -465,6 +477,9 @@ def _window_form(event_id, existing=None):
 
 
 def _render_events():
+    confirmation = st.session_state.pop("event_save_confirmation", None)
+    if confirmation:
+        st.success(confirmation)
     events = load_events()
     with st.expander("Crear evento", expanded=not events):
         _event_form()
@@ -759,9 +774,9 @@ def _session_summary(session, source):
         durations = session.get("zone_distribution", {}).get("duration_by_load_zone_minutes", {})
         if durations:
             zone = max(durations, key=lambda item: durations[item])
-    parts = [str(sport)]
+    parts = [str(display_es(sport))]
     if workout:
-        parts.append(str(workout))
+        parts.append(str(display_es(workout)))
     if isinstance(distance, (int, float)):
         parts.append(f"{distance:.1f} km" if abs(distance - round(distance)) > .01 else f"{distance:.0f} km")
     if zone:
@@ -795,11 +810,11 @@ def _calendar_session_detail(session, source, adapted=False):
         if adapted else session.get("load", {}).get("calculated_load")
     )
     return {
-        "adapted": adapted, "source": source, "sport": sport,
-        "session_type": details.get("session_type"), "zone": zone,
-        "terrain": details.get("terrain") or session.get("resolved_terrain"),
+        "adapted": adapted, "source": source, "sport": display_es(sport),
+        "session_type": display_es(details.get("session_type")), "zone": zone,
+        "terrain": display_es(details.get("terrain") or session.get("resolved_terrain")),
         "distance_km": details.get("distance_km"), "duration_minutes": duration,
-        "template": details.get("template"), "load": load,
+        "template": display_es(details.get("template")), "load": load,
     }
 
 
@@ -1198,14 +1213,13 @@ def _render_month_calendar(month_start, event, days, week_start=None):
         )
         if weekly else weekday_labels
     )
-    minimum_width = 1540 if weekly else 1680
     cell_height = 500 if weekly else 330
     _render_html(
         f"""
         <style>
-          .calendar-scroll {{width:100%;max-width:100%;overflow-x:auto;padding-bottom:8px;
+          .calendar-scroll {{width:100%;max-width:100%;overflow-x:hidden;padding-bottom:8px;
             scrollbar-color:#94A3B8 #E2E8F0;scrollbar-width:thin}}
-          .calendar-wrap {{width:100%;min-width:{minimum_width}px;box-sizing:border-box;border:1px solid #E2E8F0;border-radius:16px;overflow:hidden;
+          .calendar-wrap {{width:100%;min-width:0;box-sizing:border-box;border:1px solid #E2E8F0;border-radius:16px;overflow:hidden;
             box-shadow:0 8px 24px #0F172A0C;background:white}}
           .week-head,.month-grid {{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));
             width:100%;max-width:100%}}
@@ -1249,6 +1263,7 @@ def _render_month_calendar(month_start, event, days, week_start=None):
             justify-content:space-between;font-size:13px;color:#64748B}}
           .load-row strong {{color:#0F172A}}
           @media(max-width:800px) {{
+            .calendar-scroll {{overflow-x:auto}}
             .calendar-wrap {{min-width:1260px}}
             .week-head div {{padding:8px 3px;font-size:10px}}
             .day-cell {{min-height:230px;padding:8px 8px 30px}}
@@ -1514,6 +1529,45 @@ def _render_calendar():
         st.warning("Ventanas superpuestas: " + ", ".join(overlaps))
 
     _render_timeline(event, windows, goal_map)
+    st.markdown("### Gestionar ventanas")
+    with st.expander("Crear una nueva ventana", expanded=not windows):
+        _window_form(event_id)
+    window_map = _by_id(windows)
+    window_id = None
+    window = None
+    if windows:
+        window_id = st.selectbox(
+            "Ventana para editar o configurar",
+            tuple(window_map),
+            format_func=lambda item: (
+                f"{window_map[item]['name']} · "
+                f"{date.fromisoformat(window_map[item]['start_date']).strftime('%d/%m/%Y')}–"
+                f"{date.fromisoformat(window_map[item]['end_date']).strftime('%d/%m/%Y')}"
+            ),
+            key="calendar_window_selector",
+        )
+        window = window_map[window_id]
+        selected_columns = st.columns(3)
+        selected_columns[0].metric("Ventana seleccionada", window["name"])
+        selected_columns[1].metric("Inicio", date.fromisoformat(window["start_date"]).strftime("%d/%m/%Y"))
+        selected_columns[2].metric("Término", date.fromisoformat(window["end_date"]).strftime("%d/%m/%Y"))
+        with st.expander("Editar o eliminar la ventana seleccionada"):
+            _window_form(event_id, window)
+            st.warning(
+                "Eliminar la ventana retira también sus asignaciones de objetivos y métricas. "
+                "Los catálogos y las mediciones calculadas no se eliminan."
+            )
+            confirm = st.checkbox(
+                f"Confirmar eliminación de «{window['name']}»",
+                key=f"confirm_window_{window_id}",
+            )
+            if st.button(
+                "Eliminar ventana seleccionada",
+                disabled=not confirm,
+                key=f"delete_window_{window_id}",
+            ):
+                delete_window(window_id)
+                _rerun()
     assigned_metric_ids = {
         metric_assignment.get("metric_id")
         for window in windows
@@ -1640,8 +1694,8 @@ def _render_calendar():
             else month_start
         )
     st.caption(
-        "Carga: prevista / realizada · Desplázate horizontalmente para conservar "
-        "celdas amplias · Selecciona una fecha para consultar el detalle."
+        "Carga: prevista / realizada · El calendario se ajusta al ancho disponible · "
+        "Selecciona una fecha para consultar el detalle."
     )
     detail_day = st.date_input(
         "Detalle del día",
@@ -1651,31 +1705,13 @@ def _render_calendar():
     _render_day_detail(detail_day, event, calendar_days)
 
     st.divider()
-    st.markdown("### Configurar ciclos")
-    with st.expander("Agregar ventana al calendario", expanded=not windows):
-        _window_form(event_id)
-    if not windows:
+    st.markdown("### Configurar ventana seleccionada")
+    if window is None:
+        st.info("Crea una ventana para asignar énfasis, objetivos y métricas.")
         return
-
-    window_map = _by_id(windows)
-    window_id = st.selectbox(
-        "Ventana para configurar",
-        tuple(window_map),
-        format_func=lambda item: window_map[item]["name"],
+    st.caption(
+        f"Editando «{window['name']}» · {window['start_date']}–{window['end_date']}"
     )
-    window = window_map[window_id]
-    with st.expander("Editar o eliminar ventana"):
-        _window_form(event_id, window)
-        confirm = st.checkbox(
-            "Confirmar eliminación de la ventana", key=f"confirm_window_{window_id}"
-        )
-        if st.button(
-            "Eliminar ventana",
-            disabled=not confirm,
-            key=f"delete_window_{window_id}",
-        ):
-            delete_window(window_id)
-            _rerun()
 
     st.markdown("#### Énfasis por disciplina")
     st.caption(
@@ -2390,14 +2426,128 @@ def _render_measurements():
         _rerun()
 
 
+def _route_default_speed(metric):
+    protocol = METRIC_REGISTRY.get(metric["id"], {}).get("protocol", {})
+    modality = protocol.get("cycling_modality")
+    if modality == "Ruta":
+        return 15.0
+    if modality == "MTB":
+        return 10.0
+    disciplines = metric.get("disciplines") or []
+    return 6.0 if any(item in ("Corrida", "Trail") for item in disciplines) else 12.0
+
+
+def _render_route_evaluator():
+    st.markdown("### Evaluador de rutas GPX")
+    st.write(
+        "Comprueba antes de entrenar si una ruta contiene un tramo compatible con la "
+        "duración y pendiente de una métrica. La frecuencia cardíaca dependerá de cómo ejecutes la sesión."
+    )
+    metrics = load_metrics()
+    eligible = {
+        item["id"]: item for item in metrics
+        if item.get("id") in METRIC_REGISTRY
+        and METRIC_REGISTRY[item["id"]].get("protocol", {}).get("duration_seconds")
+        and (
+            METRIC_REGISTRY[item["id"]].get("protocol", {}).get("slope_bands")
+            or METRIC_REGISTRY[item["id"]].get("protocol", {}).get("minimum_slope_percent") is not None
+        )
+    }
+    if not eligible:
+        st.info("No hay métricas implementadas con protocolo temporal y pendiente.")
+        return
+
+    metric_id = st.selectbox(
+        "Métrica que quieres evaluar", tuple(eligible),
+        format_func=lambda value: eligible[value].get("name_es") or eligible[value].get("name") or value,
+        key="route_evaluator_metric",
+    )
+    metric = eligible[metric_id]
+    protocol = METRIC_REGISTRY[metric_id]["protocol"]
+    facts = [f"Ventana: {float(protocol['duration_seconds']) / 60:g} min"]
+    if protocol.get("slope_bands"):
+        facts.append("Pendiente: " + " / ".join(protocol["slope_bands"]))
+    if protocol.get("heart_rate_zone_ids"):
+        facts.append("FC durante la ejecución: " + " / ".join(protocol["heart_rate_zone_ids"]))
+    st.info(" · ".join(facts))
+
+    speed = st.number_input(
+        "Velocidad prevista durante el tramo de evaluación (km/h)",
+        min_value=1.0, max_value=80.0, value=_route_default_speed(metric), step=0.5,
+        key=f"route_speed_{metric_id}",
+        help=(
+            "El GPX describe el terreno, no cuánto tardarás. Esta velocidad convierte la duración "
+            "del protocolo en una distancia sobre la ruta. Usa una velocidad realista para esa subida."
+        ),
+    )
+    uploaded = st.file_uploader(
+        "Carga una ruta GPX", type=["gpx"], key="route_evaluator_gpx",
+        help="El archivo debe contener coordenadas y elevación.",
+    )
+    if uploaded is None:
+        return
+    try:
+        parsed = parse_gpx(uploaded.getvalue())
+        result = evaluate_route(parsed, protocol, float(speed))
+    except ValueError as error:
+        st.error(str(error))
+        return
+
+    summary = st.columns(4)
+    summary[0].metric("Distancia de ruta", f"{parsed['distance_m'] / 1000:.1f} km")
+    summary[1].metric("Desnivel acumulado GPX", f"{parsed['ascent_m']:.0f} m")
+    summary[2].metric("Distancia de la ventana", f"{result['target_distance_m'] / 1000:.2f} km")
+    summary[3].metric("Ventanas compatibles", result["candidate_count"])
+
+    profile = pd.DataFrame(elevation_profile(parsed)).set_index("distance_km")
+    profile.index.name = "Distancia (km)"
+    if result["compatible"]:
+        st.success("La ruta sí contiene al menos una ventana geométricamente compatible con el protocolo.")
+        options = result["candidates"]
+        selected_index = st.selectbox(
+            "Tramo para revisar", tuple(range(len(options))),
+            format_func=lambda index: (
+                f"km {options[index]['start_km']:.2f}–{options[index]['end_km']:.2f} · "
+                f"{options[index]['mean_slope_percent']:.1f}% · +{options[index]['net_elevation_gain_m']:.0f} m"
+            ), key="route_candidate_selector",
+        )
+        selected = options[selected_index]
+        chart = profile.rename(columns={"elevation_m": "Perfil completo"}).copy()
+        chart["Tramo seleccionado"] = chart["Perfil completo"].where(
+            (chart.index >= selected["start_km"]) & (chart.index <= selected["end_km"])
+        )
+        st.line_chart(chart, height=360, color=["#2563EB", "#F97316"])
+        details = pd.DataFrame([{
+            "Inicio (km)": round(item["start_km"], 2), "Fin (km)": round(item["end_km"], 2),
+            "Duración estimada (min)": round(item["duration_seconds"] / 60, 1),
+            "Pendiente media (%)": round(item["mean_slope_percent"], 1),
+            "Desnivel neto (m)": round(item["net_elevation_gain_m"], 0), "Banda": item["slope_band"],
+        } for item in options])
+        st.dataframe(details, use_container_width=True, hide_index=True)
+    else:
+        st.warning(
+            "No se encontró una ventana que cumpla la duración y la pendiente con la velocidad indicada. "
+            "Prueba otra ruta o ajusta la velocidad si la estimación no era realista."
+        )
+        st.line_chart(profile.rename(columns={"elevation_m": "Perfil de elevación"}), height=360)
+
+    with st.expander("Alcance y supuestos del análisis"):
+        for assumption in result["assumptions"]:
+            st.write(f"- {assumption}")
+        st.caption(
+            f"Se analizaron {parsed['point_count']} puntos. Los tiempos del GPX no se usan porque una ruta "
+            "planificada puede contener marcas temporales artificiales; la velocidad indicada mantiene el criterio explícito."
+        )
+
+
 def render():
     st.markdown("## Objetivos")
     st.write(
         "Mantén objetivos y métricas reutilizables en catálogos y asígnalos "
         "a ventanas temporales para cada evento."
     )
-    event_tab, catalog_tab, zones_tab, measurement_tab = st.tabs(
-        ["Evento", "Catálogo", "Zonas FC", "Mediciones"]
+    event_tab, catalog_tab, zones_tab, measurement_tab, route_tab = st.tabs(
+        ["Evento", "Catálogo", "Zonas FC", "Mediciones", "Evaluador de rutas"]
     )
     with event_tab:
         _render_events()
@@ -2407,3 +2557,5 @@ def render():
         _render_heart_rate_zones()
     with measurement_tab:
         _render_measurements()
+    with route_tab:
+        _render_route_evaluator()

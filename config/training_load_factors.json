@@ -1,0 +1,140 @@
+{
+  "schema_version": 2,
+  "distance_unit": "km",
+  "duration_unit": "minutes",
+  "load_basis": "time_in_heart_rate_zone",
+  "formula": "global_scale * sum(duration_minutes * sport_factor * zone_factor * terrain_factor)",
+  "factors": {
+    "global_scale": 0.65,
+    "sport": {
+      "Descanso": 1.0,
+      "Trail": 1.0,
+      "Corrida": 1.0,
+      "Bici": 1.0,
+      "Kayak": 1.0
+    },
+    "zone": {
+      "Z1": 1.0,
+      "Z2": 2.0,
+      "Z3": 3.0,
+      "Z4": 4.0,
+      "Z5": 5.0,
+      "Z6": 6.0
+    },
+    "terrain": {
+      "Plano": 1.0,
+      "Ondulado": 1.0,
+      "Montaña": 1.0,
+      "Subida": 1.0
+    }
+  },
+  "reference_performance": {
+    "running_pace_min_per_km": {
+      "Z1": 8.0,
+      "Z2": 6.25,
+      "Z3": 5.25,
+      "Z4": 4.6666666667,
+      "Z5": 3.8333333333,
+      "Z6": 3.3333333333
+    },
+    "trail_pace_source": "running_pace_min_per_km",
+    "cycling_speed_kmh": {
+      "Z1": 20.0,
+      "Z2": 23.0,
+      "Z3": 26.0,
+      "Z4": 29.0,
+      "Z5": 32.0,
+      "Z6": 38.0
+    },
+    "kayak_speed_kmh": {
+      "Z1": 6.0,
+      "Z2": 7.0,
+      "Z3": 8.0,
+      "Z4": 9.0,
+      "Z5": 10.0,
+      "Z6": 11.0
+    }
+  },
+  "calculation_rules": {
+    "rest_load_is_always_zero": true,
+    "explicit_distance_has_priority": true,
+    "default_recovery_zone": "Z2",
+    "structured_session_default_terrain": "Plano",
+    "unstructured_session_default_terrain_by_sport": {
+      "Bici": "Ondulado",
+      "Corrida": "Plano",
+      "Trail": "Ondulado",
+      "Kayak": "Plano"
+    },
+    "structured_trail_uses_running_reference": true,
+    "structured_kayak_policy": "warn_and_treat_as_unstructured_when_distance_and_zone_are_available",
+    "unknown_value_policy": "error"
+  },
+  "actual_terrain_classification": {
+    "primary_metric": "elevation_variation_m_per_km",
+    "thresholds": {
+      "Plano": {
+        "maximum_inclusive": 10.0
+      },
+      "Ondulado": {
+        "minimum_exclusive": 10.0,
+        "maximum_inclusive": 30.0
+      },
+      "Montaña": {
+        "minimum_exclusive": 30.0
+      }
+    },
+    "subida_detection": {
+      "minimum_ascent_m_per_km": 40.0,
+      "minimum_ascent_share": 0.8
+    },
+    "special_cases": {
+      "Kayak": "Plano",
+      "indoor_cycling": "Plano",
+      "virtual_activity": "Plano"
+    },
+    "missing_elevation_policy": "error"
+  },
+  "optimization": {
+    "target_metric": "garmin_training_load",
+    "relative_factor_objective": "maximize_pearson_correlation",
+    "global_scale_objective": "minimize_prediction_error",
+    "anchor_factors": {
+      "sport.Corrida": 1.0,
+      "zone.Z1": 1.0,
+      "terrain.Plano": 1.0
+    },
+    "excluded_factors": [
+      "sport.Descanso"
+    ],
+    "factor_constraints": {
+      "positive_only": true,
+      "upper_bounds": null,
+      "monotonic": {
+        "zone": [
+          "Z1",
+          "Z2",
+          "Z3",
+          "Z4",
+          "Z5",
+          "Z6"
+        ],
+        "terrain": [
+          "Plano",
+          "Ondulado",
+          "Montaña"
+        ]
+      },
+      "relationships": {
+        "sport.Trail": {
+          "operator": "equal_to",
+          "reference": "sport.Corrida"
+        },
+        "terrain.Subida": {
+          "operator": "greater_than_or_equal_to",
+          "reference": "terrain.Ondulado"
+        }
+      }
+    }
+  }
+}

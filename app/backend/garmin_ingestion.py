@@ -82,4 +82,31 @@ def extract_fit_activities():
             f"de métricas: {error}"
         )
         return False, output
+    try:
+        from backend.route_matching import update_route_families
+
+        route_summary = update_route_families()
+        output += (
+            "\n\nComparación de rutas repetidas\n"
+            f"Actividades nuevas comparadas: {route_summary.get('new_activities', 0)}\n"
+            f"Familias de rutas disponibles: {route_summary.get('families', 0)}"
+        )
+        if route_summary.get("failures"):
+            output += f"\nActividades sin comparar: {len(route_summary['failures'])}"
+    except Exception as error:
+        output += (
+            "\n\nLa extracción y las métricas terminaron correctamente, pero no se "
+            f"pudo actualizar la comparación de rutas: {error}"
+        )
+    try:
+        from training_load.performed_load import calculate_all_performed_loads
+
+        load_summary = calculate_all_performed_loads().get("summary", {})
+        output += (
+            "\n\nActualización incremental de carga\n"
+            f"Actividades recalculadas: {load_summary.get('activities_recalculated', 0)}\n"
+            f"Actividades reutilizadas: {load_summary.get('activities_reused', 0)}"
+        )
+    except Exception as error:
+        output += f"\n\nNo se pudo actualizar la carga realizada: {error}"
     return True, output

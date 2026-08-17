@@ -1,0 +1,1 @@
+"""Mountain-bike VAM metric."""

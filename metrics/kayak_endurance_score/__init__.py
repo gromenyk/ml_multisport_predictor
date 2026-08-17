@@ -1,0 +1,1 @@
+"""Kayak Endurance Score metric."""

@@ -12,13 +12,13 @@ from adaptive_planning.engine import build_adaptive_proposal
 from adaptive_planning.store import save_decision
 from adaptive_planning.workflow_store import (
     load_active_plans,
-    load_feedback,
+    load_published_plans,
     publish_plan,
     revert_plan,
-    save_feedback,
 )
 from athlete_state.state_builder import build_athlete_state
 from config import PROJECT_ROOT
+from backend.ui_translations import display_es
 
 
 PREDICTIONS_DIR = PROJECT_ROOT / "ML" / "results" / "predictions"
@@ -55,15 +55,15 @@ def _prediction_entries():
 def _session_rows(sessions):
     return [{
         "Fecha": item.get("date"),
-        "Día": item.get("weekday"),
-        "Deporte": item.get("sport"),
-        "Tipo": item.get("session_type") or "—",
+        "Día": display_es(item.get("weekday")),
+        "Deporte": display_es(item.get("sport")),
+        "Tipo": display_es(item.get("session_type")) or "—",
         "Zona": item.get("zone") or "—",
-        "Terreno": item.get("terrain") or "—",
+        "Terreno": display_es(item.get("terrain")) or "—",
         "Distancia (km)": item.get("distance_km"),
         "Duración est. (min)": item.get("estimated_duration_minutes"),
         "Carga est.": item.get("estimated_load"),
-        "Entrenamiento": item.get("template") or "—",
+        "Entrenamiento": display_es(item.get("template")) or "—",
     } for item in sessions]
 
 
@@ -121,14 +121,14 @@ def _recovery_detail_rows(recovery):
             "Aporte": f"{contribution(delta):+.1f} puntos" if isinstance(delta, (int, float)) else "No disponible",
         })
     fatigue = latest.get("subjective_fatigue")
-    soreness = latest.get("muscle_soreness")
+    muscular_fatigue = latest.get("muscle_fatigue", latest.get("muscle_soreness"))
     rows.extend([
-        {"Indicador": "Fatiga subjetiva", "Último": f"{fatigue:.0f}/10" if isinstance(fatigue, (int, float)) else "—",
-         "Promedio 7 d": "No calculado", "Base 60 d": "No utilizada", "Desviación usada": "Valor actual",
+        {"Indicador": "Fatiga general", "Último": f"{fatigue:.0f}/10" if isinstance(fatigue, (int, float)) else "—",
+         "Promedio 7 d": f"{average.get('subjective_fatigue'):.1f}/10" if isinstance(average.get("subjective_fatigue"), (int, float)) else "—", "Base 60 d": "No utilizada", "Desviación usada": "Valor actual",
          "Fórmula": "(5 − fatiga) × 4", "Aporte": f"{(5-fatigue)*4:+.1f} puntos" if isinstance(fatigue, (int, float)) else "No disponible"},
-        {"Indicador": "Dolor muscular", "Último": f"{soreness:.0f}/10" if isinstance(soreness, (int, float)) else "—",
-         "Promedio 7 d": "No calculado", "Base 60 d": "No utilizada", "Desviación usada": "Valor actual",
-         "Fórmula": "(4 − dolor) × 3", "Aporte": f"{(4-soreness)*3:+.1f} puntos" if isinstance(soreness, (int, float)) else "No disponible"},
+        {"Indicador": "Fatiga muscular", "Último": f"{muscular_fatigue:.0f}/10" if isinstance(muscular_fatigue, (int, float)) else "—",
+         "Promedio 7 d": f"{average.get('muscle_fatigue'):.1f}/10" if isinstance(average.get("muscle_fatigue"), (int, float)) else "—", "Base 60 d": "No utilizada", "Desviación usada": "Valor actual",
+         "Fórmula": "(4 − fatiga muscular) × 3", "Aporte": f"{(4-muscular_fatigue)*3:+.1f} puntos" if isinstance(muscular_fatigue, (int, float)) else "No disponible"},
         {"Indicador": "Molestia declarada", "Último": "Sí" if latest.get("has_discomfort") else "No",
          "Promedio 7 d": "No aplica", "Base 60 d": "No aplica", "Desviación usada": "Estado actual",
          "Fórmula": "−20 si existe", "Aporte": "−20,0 puntos" if latest.get("has_discomfort") else "+0,0 puntos"},
@@ -153,14 +153,79 @@ def _rerun():
     rerun()
 
 
-def render():
+def _render_approved_weeks(entries):
+    plans = load_published_plans()
+    st.markdown("### Semanas adaptadas y aprobadas")
+    st.caption("Consulta el plan definitivo publicado en calendario y sus versiones anteriores.")
+    if not plans:
+        st.info("Todavía no hay semanas aprobadas y publicadas.")
+        return
+    by_week = {}
+    for plan in plans:
+        by_week.setdefault(plan["week_start"], []).append(plan)
+    weeks = sorted(by_week, reverse=True)
+    selected_week = st.selectbox(
+        "Semana aprobada",
+        tuple(weeks),
+        format_func=lambda value: (
+            f"{date.fromisoformat(value).strftime('%d/%m/%Y')}–"
+            f"{date.fromisoformat(by_week[value][0]['week_end']).strftime('%d/%m/%Y')}"
+        ),
+        key="approved_week_history_selector",
+    )
+    versions = by_week[selected_week]
+    active = next((item for item in versions if item.get("status") == "active"), versions[0])
+    status_labels = {"active": "Activa", "superseded": "Reemplazada", "reverted": "Revertida"}
+    columns = st.columns(4)
+    columns[0].metric("Versión vigente", active.get("version", "—"))
+    columns[1].metric("Estado", status_labels.get(active.get("status"), active.get("status", "—")))
+    columns[2].metric("Carga estimada", f"{float(active.get('estimated_load') or 0):.1f}")
+    columns[3].metric("Sesiones", sum(item.get("sport") != "Descanso" for item in active.get("sessions", [])))
+    st.dataframe(
+        pd.DataFrame(_session_rows(active.get("sessions", []))),
+        use_container_width=True, hide_index=True,
+    )
+
+    base_entry = next((item for item in entries if item["id"] == active.get("prediction_id")), None)
+    if base_entry:
+        base_by_date = {item["date"]: item for item in base_entry["prediction"].get("sessions", [])}
+        fields = ("sport", "session_type", "terrain", "zone", "distance_km", "template")
+        changed = sum(
+            any(item.get(field) != base_by_date.get(item["date"], {}).get(field) for field in fields)
+            for item in active.get("sessions", [])
+        )
+        st.caption(
+            f"Origen: predicción base {active.get('prediction_id')} · "
+            f"{changed} día(s) modificados respecto de la base."
+        )
+    else:
+        st.caption(f"Origen: predicción base {active.get('prediction_id', '—')}.")
+
+    with st.expander(f"Historial de versiones · {len(versions)}"):
+        st.dataframe(pd.DataFrame([{
+            "Versión": item.get("version"),
+            "Estado": status_labels.get(item.get("status"), item.get("status")),
+            "Publicada": item.get("published_at"),
+            "Carga": item.get("estimated_load"),
+            "Motor": item.get("engine_version"),
+            "Comentario": item.get("comment") or "—",
+        } for item in versions]), use_container_width=True, hide_index=True)
+
+
+def render(embedded=False):
+
+    if embedded:
+        st.header("2 · Adaptar y definir el plan definitivo")
     st.write(
         "Flujo explicable para convertir una predicción base en una semana contextualizada. "
         "El motor propone cambios reversibles, pero no publica nada sin aprobación humana."
     )
     entries = _prediction_entries()
+    _render_approved_weeks(entries)
+    st.divider()
+    st.markdown("### Crear o revisar una propuesta adaptativa")
     if not entries:
-        st.info("Primero genera una semana en Predicciones.")
+        st.info("Primero genera una semana base en el paso 1 de Planificación.")
         return
     by_id = {item["id"]: item for item in entries}
     selected_id = st.session_state.get("adaptive_base_prediction_id")
@@ -169,7 +234,7 @@ def render():
 
     base_fixed = st.session_state.get("adaptive_base_fixed") == selected_id
     proposal = st.session_state.get("adaptive_proposal") if base_fixed else None
-    if proposal and proposal.get("engine_version") != "adaptive_engine_v9":
+    if proposal and proposal.get("engine_version") != "adaptive_engine_v15":
         st.session_state.pop("adaptive_proposal", None)
         st.session_state.pop("adaptive_decision", None)
         proposal = None
@@ -233,7 +298,7 @@ def render():
 
     st.divider()
     _step_header(2, "Contexto utilizado", "complete")
-    st.caption(f"Athlete State a fecha de {state['as_of_date']} · generado automáticamente con las fuentes disponibles.")
+    st.caption(f"Estado del atleta a fecha de {state['as_of_date']} · generado automáticamente con las fuentes disponibles.")
     final_cutoff = week_start - timedelta(days=1)
     if context_date < final_cutoff:
         st.warning(
@@ -261,7 +326,8 @@ def render():
             f"Sueño: **{latest.get('sleep_duration_hours', '—')} h** · "
             f"VFC: **{latest.get('hrv_ms', '—')} ms** · "
             f"FC reposo: **{latest.get('resting_hr_bpm', '—')} bpm** · "
-            f"Fatiga: **{latest.get('subjective_fatigue', '—')}**"
+            f"Fatiga general: **{latest.get('subjective_fatigue', '—')}** · "
+            f"Fatiga muscular: **{latest.get('muscle_fatigue', '—')}**"
         )
         st.markdown("**Cómo se construye la señal de recuperación**")
         st.dataframe(pd.DataFrame(_recovery_detail_rows(recovery)), use_container_width=True, hide_index=True)
@@ -304,7 +370,7 @@ def render():
     goal_payload = _json(GOALS_FILE, {"development_goals": []})
     goal_names = {item["id"]: item.get("name_es") or item.get("name") for item in goal_payload.get("development_goals", [])}
     metric_catalog = _json(METRICS_FILE, {"metrics": []}).get("metrics", [])
-    if st.button("Analizar Athlete State y proponer ajustes", use_container_width=True):
+    if st.button("Analizar Estado del atleta y proponer ajustes", use_container_width=True):
         st.session_state["adaptive_proposal"] = build_adaptive_proposal(prediction, state, goal_names, metric_catalog)
         st.session_state.pop("adaptive_decision", None)
         _rerun()
@@ -318,6 +384,37 @@ def render():
     decision_columns[2].metric("Cambios automáticos", len(proposal["changes"]))
     st.info(proposal["recommended_action"])
     st.caption(f"Motor: {proposal['engine_version']} · {proposal['note']}")
+    carry_in = proposal.get("intensity_carry_in") or []
+    if carry_in:
+        st.caption(
+            "Intensidad previa considerada: "
+            + " · ".join(
+                f"{item['date']}: {item['sport']} {item['zone']} ({item['source']})"
+                for item in carry_in
+            )
+        )
+    geographic_signals = proposal.get("geographic_signals") or {}
+    if geographic_signals:
+        summary = " · ".join(
+            f"{discipline}: {signal['status']} ({signal['change_percent']:+.1f}%)"
+            + ("; hay una serie con pérdida clara" if signal.get("has_clear_decline") else "")
+            for discipline, signal in geographic_signals.items()
+        )
+        st.caption(f"Rutas y segmentos comparables: {summary}.")
+        with st.expander("Evidencia de rutas y segmentos utilizada"):
+            rows = []
+            for discipline, signal in geographic_signals.items():
+                for item in signal.get("series", []):
+                    rows.append({
+                        "Disciplina": discipline,
+                        "Tipo": "Ruta" if item.get("type") == "route" else "Segmento",
+                        "Nombre": item.get("name") or "—",
+                        "Zona FC": item.get("zone") or "—",
+                        "Cambio": f"{item.get('change_percent', 0):+.1f}%",
+                        "Referencia": item.get("reference") or "—",
+                        "Intentos": item.get("attempts") or "—",
+                    })
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
     weights = proposal.get("discipline_weights") or {}
     selected_recipe = proposal.get("selected_recipe") or {}
     if weights or selected_recipe:
@@ -355,7 +452,7 @@ def render():
             "Carga resultante": " · ".join(f"{key} {value:.0f}%" for key, value in item["distribution"].items()),
             "Receta": "Aplicada" if item["recipe_applied"] else "En espera",
             "Plantilla": (
-                item.get("template_selection", {}).get("selected", {}).get("signature", "—")
+                display_es(item.get("template_selection", {}).get("selected", {}).get("signature", "—"))
                 if item.get("template_selection") else "—"
             ),
             "Cambios": item["changes_count"],
@@ -380,8 +477,8 @@ def render():
             latest = memory_evidence.get("latest_evaluated") or {}
             reference = memory_evidence.get("longest_well_tolerated") or {}
             memory_columns = st.columns(4)
-            memory_columns[0].metric("Disciplina", memory_evidence.get("discipline") or "—")
-            memory_columns[1].metric("Decisión", memory_evidence.get("action", "—"))
+            memory_columns[0].metric("Disciplina", display_es(memory_evidence.get("discipline")) or "—")
+            memory_columns[1].metric("Decisión", display_es(memory_evidence.get("action", "—")))
             memory_columns[2].metric(
                 "Referencia tolerada",
                 "—" if reference.get("distance_km") is None else f"{reference['distance_km']:.1f} km",
@@ -392,7 +489,7 @@ def render():
                 st.success(f"Sesión adicional: {memory_evidence['added_session']}")
             st.caption(
                 f"Última sesión evaluable: {latest.get('date', '—')} · "
-                f"respuesta: {latest.get('status', '—')}."
+                f"respuesta: {display_es(latest.get('status', '—'))}."
             )
         template_selection = (
             selected_alternative.get("template_selection")
@@ -401,7 +498,7 @@ def render():
         if template_selection:
             selected_template = template_selection["selected"]
             st.markdown("**Plantilla histórica seleccionada**")
-            st.write(selected_template["signature"])
+            st.write(display_es(selected_template["signature"]))
             st.caption(
                 f"Clase: {selected_template.get('objective_class') or '—'} · "
                 f"Duración estimada: {selected_template.get('duration_minutes', 0):.0f} min · "
@@ -410,7 +507,7 @@ def render():
             )
             with st.expander("Otras plantillas compatibles evaluadas"):
                 st.dataframe(pd.DataFrame([{
-                    "Plantilla": item["signature"],
+                    "Plantilla": display_es(item["signature"]),
                     "Clase": item.get("objective_class") or "—",
                     "Duración (min)": item.get("duration_minutes"),
                     "Carga": item.get("estimated_load"),
@@ -449,11 +546,11 @@ def render():
                 before, after = change["before"], change["after"]
                 columns = st.columns(2)
                 columns[0].markdown(
-                    f"**Antes**  \n{before['date']} · {before['label']}  \n"
+                    f"**Antes**  \n{before['date']} · {display_es(before['label'])}  \n"
                     f"Distancia: {before.get('distance_km') if before.get('distance_km') is not None else '—'} km"
                 )
                 columns[1].markdown(
-                    f"**Después**  \n{after['date']} · {after['label']}  \n"
+                    f"**Después**  \n{after['date']} · {display_es(after['label'])}  \n"
                     f"Distancia: {after.get('distance_km') if after.get('distance_km') is not None else '—'} km"
                 )
                 st.write(f"**Señal:** {change['signal']}")
@@ -503,7 +600,9 @@ def render():
     approval_columns = st.columns(2)
     if approval_columns[0].button("Mantener semana base", use_container_width=True):
         value = save_decision(chosen, prediction["week_start"], "keep_base", proposal, comment)
+        published = publish_plan(chosen, proposal, [], comment, value["id"])
         st.session_state["adaptive_decision"] = value
+        st.session_state["adaptive_published_plan"] = published
         _rerun()
     if approval_columns[1].button("Aprobar y publicar en calendario", use_container_width=True):
         value = save_decision(chosen, prediction["week_start"], "accept_adaptive_proposal", proposal, comment)
@@ -528,29 +627,3 @@ def render():
                 revert_plan(active["id"])
                 st.session_state.pop("adaptive_published_plan", None)
                 _rerun()
-
-    st.divider()
-    st.markdown("### Feedback de la semana")
-    performed_payload = _json(PROJECT_ROOT / "data" / "derived" / "training_load" / "performed_load.json", {})
-    performed_week_load = sum(
-        float(item.get("calculated_load") or 0)
-        for day, item in performed_payload.get("daily_loads", {}).items()
-        if prediction["week_start"] <= day <= prediction["week_end"]
-    )
-    if active:
-        feedback_columns = st.columns(3)
-        feedback_columns[0].metric("Carga publicada", f"{active['estimated_load']:.1f}")
-        feedback_columns[1].metric("Carga realizada", f"{performed_week_load:.1f}")
-        difference = performed_week_load - active["estimated_load"]
-        feedback_columns[2].metric("Diferencia", f"{difference:+.1f}")
-    existing_feedback = next((item for item in load_feedback() if item.get("week_start") == prediction["week_start"]), {})
-    with st.form(f"adaptive_feedback_{prediction['week_start']}"):
-        execution = st.slider("Cumplimiento percibido (%)", 0, 100, int(existing_feedback.get("execution_percent", 100)), 5)
-        response = st.selectbox("Respuesta general", ("Mejor de lo esperado", "Como se esperaba", "Peor de lo esperado"),
-                                index=("Mejor de lo esperado", "Como se esperaba", "Peor de lo esperado").index(existing_feedback.get("response", "Como se esperaba")))
-        fatigue_after = st.slider("Fatiga al terminar la semana", 0, 10, int(existing_feedback.get("fatigue_after", 5)))
-        feedback_notes = st.text_area("Qué funcionó o qué cambiarías", value=existing_feedback.get("notes", ""))
-        if st.form_submit_button("Guardar feedback", use_container_width=True):
-            save_feedback({"week_start": prediction["week_start"], "execution_percent": execution,
-                           "response": response, "fatigue_after": fatigue_after, "notes": feedback_notes})
-            st.success("Feedback guardado para el análisis posterior.")

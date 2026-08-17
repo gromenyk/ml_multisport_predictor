@@ -10,6 +10,8 @@ import pandas as pd
 import streamlit as st
 
 from config import PROJECT_ROOT
+from ML.dataset import TrainingDataset, validate_consecutive_context
+from backend.ui_translations import display_es
 
 
 LOAD_OUTPUTS = {
@@ -43,6 +45,25 @@ LOAD_SCRIPTS = (
 )
 
 PREDICTIONS_DIR = PROJECT_ROOT / "ML" / "results" / "predictions"
+PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed_data"
+PLANNED_HISTORY_DIR = PROJECT_ROOT / "data" / "planned_history"
+ADAPTIVE_PLANS_FILE = PROJECT_ROOT / "data" / "athlete_state" / "adaptive_published_plans.json"
+
+
+def _next_prediction_context():
+    dataset = TrainingDataset(
+        PROCESSED_DATA_DIR, context_weeks=4,
+        planned_history_dir=PLANNED_HISTORY_DIR,
+    )
+    context = validate_consecutive_context(dataset.weeks, 4)
+    target_start = date.fromisoformat(context[-1]["week_end"]) + timedelta(days=1)
+    target_end = target_start + timedelta(days=6)
+    current_monday = date.today() - timedelta(days=date.today().weekday())
+    maximum_target = current_monday + timedelta(days=7)
+    return {
+        "weeks": context, "target_start": target_start, "target_end": target_end,
+        "allowed": target_start <= maximum_target, "maximum_target": maximum_target,
+    }
 
 
 def _read_json(path):
@@ -55,15 +76,18 @@ def _read_json(path):
         return None, str(error)
 
 
-def _rebuild_load(script_name):
+def _rebuild_load(script_name, force=False):
     """Run one source-specific load adapter with the current Python runtime."""
-    return subprocess.run(
-        [
+    command = [
             sys.executable,
             "-X",
             "utf8",
             str(PROJECT_ROOT / "training_load" / script_name),
-        ],
+        ]
+    if force and script_name == "performed_load.py":
+        command.append("--force")
+    return subprocess.run(
+        command,
         cwd=PROJECT_ROOT,
         capture_output=True,
         text=True,
@@ -132,7 +156,7 @@ def _load_prediction_archive():
 def _prediction_workout(session):
     """Create the compact workout description used in weekly tables."""
     if session.get("sport") == "Descanso":
-        return "Rest"
+        return "Descanso"
     if session.get("template"):
         return session["template"]
     if session.get("distance_km") is not None:
@@ -149,20 +173,20 @@ def _render_prediction_archive_detail(entry):
     header_columns = st.columns(3)
     with header_columns[0]:
         st.metric(
-            "Predicted week",
+            "Semana predicha",
             f"{entry['week_start'].strftime('%d/%m/%Y')} – "
             f"{entry['week_end'].strftime('%d/%m/%Y')}",
         )
     with header_columns[1]:
         st.metric(
-            "Generated",
+            "Generada",
             entry["generated_at"].strftime("%d/%m/%Y %H:%M"),
         )
     with header_columns[2]:
         weekly_load = entry["weekly_load"]
         st.metric(
-            "Predicted load",
-            f"{weekly_load:.2f}" if weekly_load is not None else "Unavailable",
+            "Carga predicha",
+            f"{weekly_load:.2f}" if weekly_load is not None else "No disponible",
         )
 
     rows = []
@@ -170,15 +194,15 @@ def _render_prediction_archive_detail(entry):
         daily_load = daily_loads.get(session.get("date"), {})
         rows.append(
             {
-                "Date": date.fromisoformat(session["date"]),
-                "Day": session.get("weekday"),
-                "Sport": session.get("sport"),
-                "Session type": session.get("session_type"),
-                "Objective": session.get("objective_class"),
-                "Terrain": session.get("terrain"),
-                "Zone": session.get("zone"),
-                "Workout": _prediction_workout(session),
-                "Load": daily_load.get("predicted_load"),
+                "Fecha": date.fromisoformat(session["date"]),
+                "Día": display_es(session.get("weekday")),
+                "Deporte": display_es(session.get("sport")),
+                "Tipo de sesión": display_es(session.get("session_type")),
+                "Objetivo": display_es(session.get("objective_class")),
+                "Terreno": display_es(session.get("terrain")),
+                "Zona": session.get("zone"),
+                "Entrenamiento": display_es(_prediction_workout(session)),
+                "Carga": daily_load.get("predicted_load"),
             }
         )
 
@@ -187,39 +211,39 @@ def _render_prediction_archive_detail(entry):
         hide_index=True,
         use_container_width=True,
         column_config={
-            "Date": st.column_config.DateColumn(format="DD/MM/YYYY"),
-            "Load": st.column_config.NumberColumn(format="%.2f"),
+            "Fecha": st.column_config.DateColumn(format="DD/MM/YYYY"),
+            "Carga": st.column_config.NumberColumn(format="%.2f"),
         },
     )
     st.caption(
-        "Context weeks: "
+        "Semanas de contexto: "
         + ", ".join(prediction.get("context_weeks") or [])
     )
-    st.caption(f"Prediction ID: {entry['prediction_id']}")
+    st.caption(f"Identificador de predicción: {entry['prediction_id']}")
 
     model_fingerprints = prediction.get("production_models")
     if model_fingerprints:
-        with st.expander("Production model fingerprints"):
+        with st.expander("Huellas de los modelos de producción"):
             st.dataframe(
                 [
-                    {"Model": name, "SHA-256": fingerprint}
+                    {"Modelo": name, "SHA-256": fingerprint}
                     for name, fingerprint in model_fingerprints.items()
                 ],
                 hide_index=True,
                 use_container_width=True,
             )
     else:
-        st.caption("Production model fingerprints: unavailable")
+        st.caption("Huellas de los modelos de producción: no disponibles")
 
     warnings = []
     for session in load_snapshot.get("sessions", []):
         warnings.extend(session.get("quality", {}).get("warnings", []))
     if warnings:
-        with st.expander(f"Calculation warnings ({len(warnings)})"):
+        with st.expander(f"Advertencias de cálculo ({len(warnings)})"):
             for warning in warnings:
                 st.warning(warning)
 
-    with st.expander("Prediction JSON"):
+    with st.expander("JSON de la predicción"):
         st.code(
             json.dumps(prediction, indent=4, ensure_ascii=False),
             language="json",
@@ -229,19 +253,19 @@ def _render_prediction_archive_detail(entry):
 def _render_prediction_history():
     """Render filters, archive index and the selected weekly generation."""
     st.divider()
-    st.header("Prediction History")
+    st.header("Historial de predicciones")
     st.write(
-        "Inspect every archived weekly generation without mixing different "
-        "simulation dates or model runs."
+        "Revisa cada semana archivada sin mezclar distintas fechas de simulación "
+        "ni ejecuciones del modelo."
     )
 
     entries, errors = _load_prediction_archive()
     if errors:
-        with st.expander(f"Archive warnings ({len(errors)})"):
+        with st.expander(f"Advertencias del archivo ({len(errors)})"):
             for error in errors:
                 st.warning(error)
     if not entries:
-        st.info("No archived predictions are available yet.")
+        st.info("Todavía no hay predicciones archivadas.")
         return
 
     target_min = min(entry["week_start"] for entry in entries)
@@ -254,7 +278,7 @@ def _render_prediction_history():
     )
 
     if st.button(
-        "Show all predictions",
+        "Mostrar todas las predicciones",
         use_container_width=True,
         key="prediction_history_show_all",
     ):
@@ -271,35 +295,34 @@ def _render_prediction_history():
     target_col, generation_col = st.columns(2)
     with target_col:
         target_range = st.date_input(
-            "Target week starts between",
+            "Inicio de la semana predicha entre",
             value=(target_min, target_max),
             min_value=target_min,
             max_value=target_max,
             key="prediction_history_target_range",
             help=(
-                "Historical date of the week produced by the model. This is "
-                "independent from the real date when you ran the prediction."
+                "Fecha histórica de la semana producida por el modelo. Es independiente "
+                "de la fecha real en que ejecutaste la predicción."
             ),
         )
     with generation_col:
         generation_range = st.date_input(
-            "File generated on",
+            "Archivo generado entre",
             value=(generation_min, generation_max),
             min_value=generation_min,
             max_value=generation_max,
             key="prediction_history_generation_range",
             help=(
-                "Real calendar date when Generate next week was pressed and "
-                "the archived JSON was created."
+                "Fecha real en que se pulsó Generar próxima semana y se creó el JSON archivado."
             ),
         )
 
     if len(target_range) != 2 or len(generation_range) != 2:
-        st.info("Select both endpoints of each date range.")
+        st.info("Selecciona ambos extremos de cada intervalo de fechas.")
         return
 
     latest_only = st.checkbox(
-        "Show only the latest generation for each predicted week",
+        "Mostrar sólo la generación más reciente de cada semana predicha",
         value=False,
         key="prediction_history_latest_only",
     )
@@ -325,20 +348,20 @@ def _render_prediction_history():
         messages = []
         if hidden_by_date:
             messages.append(
-                f"{hidden_by_date} outside the selected date ranges"
+                f"{hidden_by_date} fuera de los intervalos seleccionados"
             )
         if hidden_versions:
             messages.append(
-                f"{hidden_versions} older generation(s) hidden"
+                f"{hidden_versions} generaciones anteriores ocultas"
             )
         st.info(
-            "Not all archived predictions are currently shown: "
+            "No se muestran todas las predicciones archivadas: "
             + "; ".join(messages)
             + "."
         )
 
     if not filtered:
-        st.info("No predictions match the selected filters.")
+        st.info("Ninguna predicción coincide con los filtros seleccionados.")
         return
 
     index_rows = []
@@ -346,12 +369,12 @@ def _render_prediction_history():
         context = entry["prediction"].get("context_weeks") or []
         index_rows.append(
             {
-                "Generated": entry["generated_at"],
-                "Target week start": entry["week_start"],
-                "Target week end": entry["week_end"],
-                "Last context week": context[-1] if context else None,
-                "Sessions": len(entry["prediction"].get("sessions", [])),
-                "Predicted load": entry["weekly_load"],
+                "Generada": entry["generated_at"],
+                "Inicio semana predicha": entry["week_start"],
+                "Fin semana predicha": entry["week_end"],
+                "Última semana de contexto": context[-1] if context else None,
+                "Sesiones": len(entry["prediction"].get("sessions", [])),
+                "Carga predicha": entry["weekly_load"],
             }
         )
     st.dataframe(
@@ -359,16 +382,16 @@ def _render_prediction_history():
         hide_index=True,
         use_container_width=True,
         column_config={
-            "Generated": st.column_config.DatetimeColumn(
+            "Generada": st.column_config.DatetimeColumn(
                 format="DD/MM/YYYY HH:mm"
             ),
-            "Target week start": st.column_config.DateColumn(
+            "Inicio semana predicha": st.column_config.DateColumn(
                 format="DD/MM/YYYY"
             ),
-            "Target week end": st.column_config.DateColumn(
+            "Fin semana predicha": st.column_config.DateColumn(
                 format="DD/MM/YYYY"
             ),
-            "Predicted load": st.column_config.NumberColumn(format="%.2f"),
+            "Carga predicha": st.column_config.NumberColumn(format="%.2f"),
         },
     )
 
@@ -376,13 +399,13 @@ def _render_prediction_history():
         entry["prediction_id"]: entry for entry in filtered
     }
     selected_id = st.selectbox(
-        "Prediction to inspect",
+        "Predicción a consultar",
         options=list(entry_by_id),
         format_func=lambda prediction_id: (
             f"{entry_by_id[prediction_id]['week_start'].strftime('%d/%m/%Y')}"
             " – "
             f"{entry_by_id[prediction_id]['week_end'].strftime('%d/%m/%Y')}"
-            " · generated "
+            " · generada "
             f"{entry_by_id[prediction_id]['generated_at'].strftime('%d/%m/%Y %H:%M')}"
         ),
         key="prediction_history_selected_id",
@@ -409,8 +432,21 @@ def _latest_prediction_snapshots(predicted_data):
     return latest
 
 
-def _build_load_rows(prescribed, predicted, performed):
-    """Join all three independently derived load sources by calendar date."""
+def _adaptive_approved_loads():
+    """Return daily load of the currently active approved adaptive plans."""
+    payload, _ = _read_json(ADAPTIVE_PLANS_FILE)
+    daily = {}
+    for plan in (payload or {}).get("plans", []):
+        if plan.get("status") != "active":
+            continue
+        for day, value in (plan.get("daily_loads") or {}).items():
+            if isinstance(value, (int, float)):
+                daily[day] = float(value)
+    return daily
+
+
+def _build_load_rows(prescribed, predicted, performed, adaptive):
+    """Join base, approved-adaptive and performed load sources by date."""
     prescribed_days = (prescribed or {}).get("daily_loads", {})
     performed_days = (performed or {}).get("daily_loads", {})
     performed_start = min(performed_days) if performed_days else None
@@ -425,7 +461,7 @@ def _build_load_rows(prescribed, predicted, performed):
             predicted_ids[day] = prediction.get("prediction_id")
 
     dates = sorted(
-        set(prescribed_days) | set(predicted_days) | set(performed_days)
+        set(prescribed_days) | set(predicted_days) | set(performed_days) | set(adaptive)
     )
     rows = []
     for day in dates:
@@ -453,6 +489,7 @@ def _build_load_rows(prescribed, predicted, performed):
                 "Date": calendar_date,
                 "Prescribed": prescribed_day.get("prescribed_load"),
                 "Predicted": predicted_day.get("predicted_load"),
+                "Adaptive": adaptive.get(day),
                 "Performed": performed_load,
                 "Prescribed status": prescribed_day.get("quality_status"),
                 "Predicted status": predicted_day.get("quality_status"),
@@ -512,16 +549,16 @@ def _component_table(components):
     for component in components or []:
         rows.append(
             {
-                "Block": component.get("source_block_index"),
-                "Type": component.get("type"),
-                "Zone": component.get("zone"),
-                "Duration (min)": component.get("total_duration_minutes"),
-                "Duration source": component.get("duration_source"),
-                "Distance (km)": component.get("total_distance_km"),
-                "Sport factor": component.get("sport_factor"),
-                "Zone factor": component.get("zone_factor"),
-                "Terrain factor": component.get("terrain_factor"),
-                "Load": component.get("scaled_load"),
+                "Bloque": component.get("source_block_index"),
+                "Tipo": display_es(component.get("type")),
+                "Zona": component.get("zone"),
+                "Duración (min)": component.get("total_duration_minutes"),
+                "Fuente de duración": display_es(component.get("duration_source")),
+                "Distancia (km)": component.get("total_distance_km"),
+                "Factor de deporte": component.get("sport_factor"),
+                "Factor de zona": component.get("zone_factor"),
+                "Factor de terreno": component.get("terrain_factor"),
+                "Carga": component.get("scaled_load"),
             }
         )
     return rows
@@ -540,8 +577,19 @@ def _format_duration(seconds):
 def _render_session_detail(title, metadata, load, quality):
     """Render one session/activity without exposing filesystem paths."""
     st.markdown(f"**{title}**")
+    field_labels = {
+        "sport": "Deporte", "cycling_modality": "Modalidad de ciclismo",
+        "garmin_sport": "Deporte Garmin", "garmin_profile": "Perfil Garmin",
+        "distance_km": "Distancia (km)", "elapsed_duration_seconds": "Duración total (s)",
+        "paused_duration_seconds": "Tiempo pausado (s)", "paused_time_share": "Proporción pausada",
+        "ascent_meters": "Desnivel positivo (m)", "descent_meters": "Desnivel negativo (m)",
+        "duration": "Duración", "terrain": "Terreno",
+        "garmin_training_load": "Carga de entrenamiento Garmin",
+        "session_type": "Tipo de sesión", "objective_class": "Objetivo",
+        "zone": "Zona", "template": "Entrenamiento",
+    }
     metadata_rows = [
-        {"Field": key.replace("_", " ").title(), "Value": value}
+        {"Campo": field_labels.get(key, key.replace("_", " ").title()), "Valor": display_es(value)}
         for key, value in metadata.items()
         if value is not None and key != "blocks"
     ]
@@ -549,7 +597,7 @@ def _render_session_detail(title, metadata, load, quality):
         st.dataframe(metadata_rows, hide_index=True, use_container_width=True)
 
     if load:
-        st.metric("Calculated load", f"{load['calculated_load']:.2f}")
+        st.metric("Carga calculada", f"{load['calculated_load']:.2f}")
         components = _component_table(load.get("components"))
         if components:
             st.dataframe(
@@ -557,8 +605,8 @@ def _render_session_detail(title, metadata, load, quality):
                 hide_index=True,
                 use_container_width=True,
                 column_config={
-                    "Distance (km)": st.column_config.NumberColumn(format="%.2f"),
-                    "Load": st.column_config.NumberColumn(format="%.2f"),
+                    "Distancia (km)": st.column_config.NumberColumn(format="%.2f"),
+                    "Carga": st.column_config.NumberColumn(format="%.2f"),
                 },
             )
 
@@ -598,14 +646,14 @@ def _render_load_detail(
                 if session.get("date") == day
             )
 
-    st.subheader(f"Load detail · {day}")
+    st.subheader(f"Detalle de carga · {day}")
     prescribed_tab, predicted_tab, performed_tab = st.tabs(
-        ["Prescribed", "Predicted", "Performed"]
+        ["Prescrita", "Predicha", "Realizada"]
     )
 
     with prescribed_tab:
         if not prescribed_sessions:
-            st.info("No prescribed session is available for this date.")
+            st.info("No hay una sesión prescrita para esta fecha.")
         for session in prescribed_sessions:
             _render_session_detail(
                 session["session_id"],
@@ -616,7 +664,7 @@ def _render_load_detail(
 
     with predicted_tab:
         if not predicted_sessions:
-            st.info("No model prediction is available for this date.")
+            st.info("No hay una predicción del modelo para esta fecha.")
         for session in predicted_sessions:
             _render_session_detail(
                 session["session_id"],
@@ -627,7 +675,7 @@ def _render_load_detail(
 
     with performed_tab:
         if not performed_activities:
-            st.info("No performed Garmin activity is available for this date.")
+            st.info("No hay una actividad Garmin realizada para esta fecha.")
         for activity in performed_activities:
             activity_metadata = activity.get("activity", {})
             metadata = {
@@ -652,30 +700,48 @@ def _render_load_detail(
 def render_training_load():
     """Render the daily comparison table and its session drill-down."""
     st.divider()
-    st.header("Training Load")
+    st.header("Carga de entrenamiento")
     st.write(
-        "Compare the human prescription, the model prediction and Garmin "
-        "activities using the same load formula."
+        "Compara la prescripción humana, la predicción del modelo y las actividades "
+        "Garmin usando la misma fórmula de carga."
     )
 
-    if st.button("Recalculate training loads", use_container_width=True):
+    run_update = st.button("Actualizar carga", use_container_width=True)
+    with st.expander("Opciones avanzadas"):
+        st.caption(
+            "La reconstrucción completa ignora la memoria incremental. Úsala sólo "
+            "para auditoría o si sospechas que un dato derivado está desactualizado."
+        )
+        run_full_rebuild = st.button(
+            "Reconstruir toda la carga",
+            use_container_width=True,
+            key="force_training_load_rebuild",
+        )
+    if run_update or run_full_rebuild:
         progress = st.progress(0)
         messages = []
         for index, (label, script_name) in enumerate(LOAD_SCRIPTS, start=1):
-            result = _rebuild_load(script_name)
+            result = _rebuild_load(script_name, force=run_full_rebuild)
             output_exists = LOAD_OUTPUTS[label].exists()
+            recalculated = reused = None
+            if label == "Performed" and output_exists:
+                performed_payload, _ = _read_json(LOAD_OUTPUTS[label])
+                performed_summary = (performed_payload or {}).get("summary", {})
+                recalculated = performed_summary.get("activities_recalculated")
+                reused = performed_summary.get("activities_reused")
             messages.append(
                 {
-                    "Source": label,
-                    "Output generated": output_exists,
-                    "Return code": result.returncode,
+                    "Fuente": label,
+                    "Resultado generado": output_exists,
+                    "Actividades recalculadas": recalculated,
+                    "Actividades reutilizadas": reused,
+                    "Código": result.returncode,
                 }
             )
             progress.progress(index / len(LOAD_SCRIPTS))
         st.dataframe(messages, hide_index=True, use_container_width=True)
         st.caption(
-            "A non-zero code can indicate audited incomplete historical "
-            "sessions; valid derived rows are still preserved."
+            "En el modo normal, las actividades sin cambios se recuperan de la memoria local."
         )
 
     datasets = {}
@@ -687,20 +753,22 @@ def render_training_load():
 
     if errors:
         st.warning(
-            "Some load sources are unavailable. Use Recalculate training "
-            "loads after their source data has been processed."
+            "Algunas fuentes de carga no están disponibles. Usa Actualizar carga "
+            "después de procesar sus datos de origen."
         )
-        with st.expander("Unavailable sources"):
+        with st.expander("Fuentes no disponibles"):
             for error in errors:
                 st.write(error)
 
+    adaptive_loads = _adaptive_approved_loads()
     rows, predictions = _build_load_rows(
         datasets["Prescribed"],
         datasets["Predicted"],
         datasets["Performed"],
+        adaptive_loads,
     )
     if not rows:
-        st.info("No training-load data is available yet.")
+        st.info("Todavía no hay datos de carga de entrenamiento.")
         return
 
     minimum_date = rows[0]["Date"]
@@ -709,7 +777,7 @@ def render_training_load():
     start_col, end_col = st.columns(2)
     with start_col:
         start_date = st.date_input(
-            "From",
+            "Desde",
             value=default_start,
             min_value=minimum_date,
             max_value=maximum_date,
@@ -717,7 +785,7 @@ def render_training_load():
         )
     with end_col:
         end_date = st.date_input(
-            "To",
+            "Hasta",
             value=maximum_date,
             min_value=minimum_date,
             max_value=maximum_date,
@@ -725,31 +793,36 @@ def render_training_load():
         )
 
     if start_date > end_date:
-        st.error("The start date must not be later than the end date.")
+        st.error("La fecha inicial no puede ser posterior a la fecha final.")
         return
 
     filtered_rows = [
         row for row in rows if start_date <= row["Date"] <= end_date
     ]
-    visible_columns = ["Date", "Prescribed", "Predicted", "Performed"]
+    visible_columns = ["Date", "Prescribed", "Predicted", "Adaptive", "Performed"]
     table = pd.DataFrame(filtered_rows)
     complete_table = pd.DataFrame(rows)
 
-    metric_columns = st.columns(3)
+    metric_columns = st.columns(4)
     for column, metric_column in zip(
-        ("Prescribed", "Predicted", "Performed"),
+        ("Prescribed", "Predicted", "Adaptive", "Performed"),
         metric_columns,
     ):
         total = table[column].dropna().sum()
         available_days = int(table[column].notna().sum())
         with metric_column:
-            st.metric(f"{column} total", f"{total:.1f}")
-            st.caption(f"{available_days} days with data")
+            source_label = {
+                "Prescribed": "Prescrita", "Predicted": "Predicha",
+                "Adaptive": "Adaptada aprobada", "Performed": "Realizada",
+            }[column]
+            st.metric(f"Carga {source_label.lower()} total", f"{total:.1f}")
+            st.caption(f"{available_days} días con datos")
 
-    chart_columns = ["Prescribed", "Predicted", "Performed"]
+    chart_columns = ["Prescribed", "Predicted", "Adaptive", "Performed"]
     chart_color_map = {
         "Prescribed": "#2563EB",
         "Predicted": "#F59E0B",
+        "Adaptive": "#8B5CF6",
         "Performed": "#16A34A",
     }
     chart_data = table[["Date", *chart_columns]].copy()
@@ -774,9 +847,13 @@ def render_training_load():
     ]
 
     selected_sources = st.multiselect(
-        "Sources shown in charts",
+        "Fuentes mostradas en los gráficos",
         options=chart_columns,
         default=chart_columns,
+        format_func=lambda value: {
+            "Prescribed": "Prescrita", "Predicted": "Predicha",
+            "Adaptive": "Adaptada aprobada", "Performed": "Realizada",
+        }[value],
         key="training_load_chart_sources",
     )
 
@@ -785,17 +862,26 @@ def render_training_load():
     )
 
     if selected_sources:
+        source_names_es = {
+            "Prescribed": "Prescrita", "Predicted": "Predicha",
+            "Adaptive": "Adaptada aprobada", "Performed": "Realizada",
+        }
+        selected_sources_es = [source_names_es[value] for value in selected_sources]
+        chart_data_es = chart_data.rename(columns={"Date": "Fecha", **source_names_es})
+        weekly_table_es = weekly_table.rename(columns={
+            "Week start": "Inicio de semana", "Week end": "Fin de semana", **source_names_es,
+        })
         selected_colors = [
             chart_color_map[source] for source in selected_sources
         ]
 
-        st.subheader("Load evolution")
+        st.subheader("Evolución de la carga")
         st.line_chart(
-            chart_data,
-            x="Date",
-            y=selected_sources,
-            x_label="Date",
-            y_label="Training load",
+            chart_data_es,
+            x="Fecha",
+            y=selected_sources_es,
+            x_label="Fecha",
+            y_label="Carga de entrenamiento",
             color=selected_colors,
             height=360,
         )
@@ -858,68 +944,77 @@ def render_training_load():
                 "El balance es una señal de contexto, no un límite aislado."
             )
 
-        st.subheader("Daily source comparison")
+        st.subheader("Comparación diaria por fuente")
         st.bar_chart(
-            chart_data,
-            x="Date",
-            y=selected_sources,
-            x_label="Date",
-            y_label="Training load",
+            chart_data_es,
+            x="Fecha",
+            y=selected_sources_es,
+            x_label="Fecha",
+            y_label="Carga de entrenamiento",
             color=selected_colors,
             stack=False,
             height=420,
         )
 
-        st.subheader("Weekly load totals")
+        st.subheader("Totales semanales de carga")
         st.line_chart(
-            weekly_table,
-            x="Week start",
-            y=selected_sources,
-            x_label="Week starting",
-            y_label="Weekly training load",
+            weekly_table_es,
+            x="Inicio de semana",
+            y=selected_sources_es,
+            x_label="Inicio de semana",
+            y_label="Carga semanal",
             color=selected_colors,
             height=420,
         )
     else:
-        st.info("Select at least one source to display the charts.")
+        st.info("Selecciona al menos una fuente para mostrar los gráficos.")
 
-    st.subheader("Weekly values")
+    st.subheader("Valores semanales")
     weekly_values = weekly_table[
         ["Week start", "Week end", *chart_columns]
     ].copy()
+    weekly_values = weekly_values.rename(columns={
+        "Week start": "Inicio de semana", "Week end": "Fin de semana",
+        "Prescribed": "Prescrita", "Predicted": "Predicha",
+        "Adaptive": "Adaptada aprobada", "Performed": "Realizada",
+    })
     st.dataframe(
         weekly_values,
         hide_index=True,
         use_container_width=True,
         column_config={
-            "Week start": st.column_config.DateColumn(format="DD/MM/YYYY"),
-            "Week end": st.column_config.DateColumn(format="DD/MM/YYYY"),
-            "Prescribed": st.column_config.NumberColumn(format="%.2f"),
-            "Predicted": st.column_config.NumberColumn(format="%.2f"),
-            "Performed": st.column_config.NumberColumn(format="%.2f"),
+            "Inicio de semana": st.column_config.DateColumn(format="DD/MM/YYYY"),
+            "Fin de semana": st.column_config.DateColumn(format="DD/MM/YYYY"),
+            "Prescrita": st.column_config.NumberColumn(format="%.2f"),
+            "Predicha": st.column_config.NumberColumn(format="%.2f"),
+            "Realizada": st.column_config.NumberColumn(format="%.2f"),
         },
     )
     st.caption(
-        "Weeks run from Monday to Sunday. Performed totals include the Garmin "
-        "activities imported so far, so the current week can still be partial."
+        "Las semanas van de lunes a domingo. Los totales realizados incluyen las "
+        "actividades Garmin importadas hasta ahora, por lo que la semana actual puede estar incompleta."
     )
 
-    st.subheader("Daily values")
+    st.subheader("Valores diarios")
     event = st.dataframe(
-        table[visible_columns],
+        table[visible_columns].rename(columns={
+            "Date": "Fecha", "Prescribed": "Prescrita",
+            "Predicted": "Predicha", "Adaptive": "Adaptada aprobada",
+            "Performed": "Realizada",
+        }),
         hide_index=True,
         use_container_width=True,
         on_select="rerun",
         selection_mode="single-row",
         key="training_load_comparison",
         column_config={
-            "Date": st.column_config.DateColumn(format="DD/MM/YYYY"),
-            "Prescribed": st.column_config.NumberColumn(format="%.2f"),
-            "Predicted": st.column_config.NumberColumn(format="%.2f"),
-            "Performed": st.column_config.NumberColumn(format="%.2f"),
+            "Fecha": st.column_config.DateColumn(format="DD/MM/YYYY"),
+            "Prescrita": st.column_config.NumberColumn(format="%.2f"),
+            "Predicha": st.column_config.NumberColumn(format="%.2f"),
+            "Realizada": st.column_config.NumberColumn(format="%.2f"),
         },
     )
-    st.caption("Select a row to inspect its sessions and load components.")
+    st.caption("Selecciona una fila para consultar sus sesiones y componentes de carga.")
 
     selected_rows = event.selection.rows
     if selected_rows:
@@ -932,18 +1027,51 @@ def render_training_load():
         )
 
 
-def render():
+def render(embedded=False):
     # STEP 6 - NEXT WEEK PREDICTION
     # ==========================================================
 
-    st.header("Paso 6 · Predecir la próxima semana")
+    st.header("1 · Generar la semana base" if embedded else "Predecir la próxima semana")
 
     st.write(
-        """
-    Generate the next unknown training week using the latest four weeks as
-    context and the production models trained with 100% of the history.
-    """
+        "Genera exclusivamente la semana inmediatamente posterior usando las últimas cuatro "
+        "semanas planificadas. Las semanas adaptativas aprobadas reemplazan progresivamente a "
+        "las planillas humanas dentro de este contexto."
     )
+
+    try:
+        planning = _next_prediction_context()
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        planning = None
+        st.error(f"No se puede construir un contexto de planificación válido: {error}")
+    if planning:
+        source_labels = {
+            "human_plan": "Planilla del entrenador",
+            "adaptive_approved": "Semana adaptativa aprobada",
+        }
+        human_count = sum(
+            (item.get("metadata") or {}).get("source", "human_plan") == "human_plan"
+            for item in planning["weeks"]
+        )
+        adaptive_count = len(planning["weeks"]) - human_count
+        st.success(
+            f"Próxima semana disponible: {planning['target_start'].strftime('%d/%m/%Y')}–"
+            f"{planning['target_end'].strftime('%d/%m/%Y')} · Contexto: "
+            f"{human_count} del entrenador + {adaptive_count} adaptativa(s) aprobada(s)."
+        )
+        st.dataframe(pd.DataFrame([{
+            "Semana": f"{date.fromisoformat(item['week_start']).strftime('%d/%m/%Y')}–"
+                       f"{date.fromisoformat(item['week_end']).strftime('%d/%m/%Y')}",
+            "Origen": source_labels.get(
+                (item.get("metadata") or {}).get("source", "human_plan"), "Planificada"
+            ),
+            "Estado": "Aprobada" if (item.get("metadata") or {}).get("source") == "adaptive_approved" else "Histórica",
+        } for item in planning["weeks"]]), use_container_width=True, hide_index=True)
+        if not planning["allowed"]:
+            st.info(
+                "Ya existe planificación aprobada hasta la próxima semana. Para evitar encadenar "
+                "predicciones futuras, la siguiente generación se habilitará cuando corresponda."
+            )
 
     production_model_dir = PROJECT_ROOT / "ML" / "models" / "production"
     required_production_models = [
@@ -964,14 +1092,14 @@ def render():
     )
 
     if not production_ready:
-        st.warning("Train the production models before generating the next week.")
+        st.warning("Los modelos de producción deben estar disponibles antes de generar la próxima semana.")
 
     if st.button(
         "Generar próxima semana",
-        disabled=not production_ready,
+        disabled=not production_ready or planning is None or not planning["allowed"],
         use_container_width=True,
     ):
-        with st.spinner("Generating next week prediction..."):
+        with st.spinner("Generando la predicción de la próxima semana..."):
             prediction_result = subprocess.run(
                 [
                     sys.executable,
@@ -987,8 +1115,8 @@ def render():
             )
 
         if prediction_result.returncode != 0:
-            st.error("Next week prediction failed.")
-            with st.expander("Prediction error", expanded=True):
+            st.error("Falló la predicción de la próxima semana.")
+            with st.expander("Error de predicción", expanded=True):
                 st.code(
                     (prediction_result.stdout + "\n" + prediction_result.stderr).strip(),
                     language="text",
@@ -996,8 +1124,8 @@ def render():
         else:
             prediction = json.loads(prediction_result.stdout)
             st.success(
-                f"Prediction generated for {prediction['week_start']} "
-                f"to {prediction['week_end']}."
+                f"Predicción generada para el período {prediction['week_start']} "
+                f"a {prediction['week_end']}."
             )
 
             rows = []
@@ -1006,29 +1134,29 @@ def render():
                 if workout is None and session.get("distance_km") is not None:
                     workout = f"{session['distance_km']} km"
                 if workout is None and session["sport"] == "Descanso":
-                    workout = "Rest"
+                    workout = "Descanso"
 
                 rows.append(
                     {
-                        "Date": session["date"],
-                        "Day": session["weekday"],
-                        "Sport": session["sport"],
-                        "Session type": session.get("session_type"),
-                        "Objective": session.get("objective_class"),
-                        "Terrain": session.get("terrain"),
-                        "Zone": session.get("zone"),
-                        "Workout": workout,
+                        "Fecha": session["date"],
+                        "Día": display_es(session["weekday"]),
+                        "Deporte": display_es(session["sport"]),
+                        "Tipo de sesión": display_es(session.get("session_type")),
+                        "Objetivo": display_es(session.get("objective_class")),
+                        "Terreno": display_es(session.get("terrain")),
+                        "Zona": session.get("zone"),
+                        "Entrenamiento": display_es(workout),
                     }
                 )
 
             st.table(rows)
             st.caption(
-                "Context weeks: " + ", ".join(prediction["context_weeks"])
+                "Semanas de contexto: " + ", ".join(prediction["context_weeks"])
             )
 
             prediction_json = json.dumps(prediction, indent=4, ensure_ascii=False)
 
-            with st.expander("Prediction JSON"):
+            with st.expander("JSON de la predicción"):
                 st.code(prediction_json, language="json")
 
             # Keep the derived prediction-load collection synchronized with

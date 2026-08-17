@@ -1,0 +1,1 @@
+"""Road cycling VAM metric."""
