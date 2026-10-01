@@ -760,7 +760,6 @@ def _session_summary(session, source):
     )
     workout = (
         details.get("template")
-        or details.get("session_type")
         or details.get("name")
         or details.get("objective_class")
     )
@@ -811,7 +810,7 @@ def _calendar_session_detail(session, source, adapted=False):
     )
     return {
         "adapted": adapted, "source": source, "sport": display_es(sport),
-        "session_type": display_es(details.get("session_type")), "zone": zone,
+        "zone": zone,
         "terrain": display_es(details.get("terrain") or session.get("resolved_terrain")),
         "distance_km": details.get("distance_km"), "duration_minutes": duration,
         "template": display_es(details.get("template")), "load": load,
@@ -893,6 +892,16 @@ def _build_calendar_days(windows, metric_map):
     for plan in adaptive.get("plans", []):
         if plan.get("status") != "active":
             continue
+        daily_plan_loads = {}
+        for session in plan.get("sessions", []):
+            session_date = session.get("date")
+            if not session_date:
+                continue
+            try:
+                session_load = float(session.get("estimated_load") or 0)
+            except (TypeError, ValueError):
+                session_load = 0.0
+            daily_plan_loads[session_date] = daily_plan_loads.get(session_date, 0.0) + session_load
         plan_days = {item.get("date") for item in plan.get("sessions", [])}
         for calendar_day in list(days):
             if calendar_day.isoformat() in plan_days:
@@ -910,7 +919,9 @@ def _build_calendar_days(windows, metric_map):
             days[calendar_day]["predicted_session_details"].append(
                 _calendar_session_detail(session, "predicted", adapted=True)
             )
-            days[calendar_day]["predicted_load"] = plan.get("daily_loads", {}).get(session["date"])
+            # Do not read the historical ``daily_loads`` cache here: older
+            # plans stored only the last session when a day had two sessions.
+            days[calendar_day]["predicted_load"] = round(daily_plan_loads.get(session["date"], 0.0), 1)
 
     performed = _read_optional_json(PERFORMED_LOAD_FILE)
     for day_text, values in performed.get("daily_loads", {}).items():
@@ -1009,7 +1020,6 @@ def _schedule_calendar_evaluations(days, freshness, metric_map):
         evaluation["scheduled_date"] = scheduled_day.isoformat()
         evaluation["matched_session"] = {
             "sport": matched_session.get("sport"),
-            "session_type": matched_session.get("session_type"),
             "zone": matched_session.get("zone"),
             "terrain": matched_session.get("terrain"),
             "distance_km": matched_session.get("distance_km"),
@@ -1085,8 +1095,8 @@ def _calendar_badges(info):
     badges = []
     if info["windows"]:
         badges.append(("cycle-badge", info["windows"][0]["name"]))
-    if info["performed_sessions"]:
-        badges.append(("performed-badge", f"✓ {info['performed_sessions'][0]}"))
+    for session in info["performed_sessions"]:
+        badges.append(("performed-badge", f"✓ {session}"))
     if info["metrics"]:
         metric = info["metrics"][0]
         value = metric.get("value")
@@ -1099,8 +1109,9 @@ def _calendar_training_cards(info):
     cards = []
     for session in info.get("predicted_session_details", []):
         sport = str(session.get("sport") or "Entrenamiento")
-        session_type = session.get("session_type") or (
-            "Descanso" if sport == "Descanso" else "Sesión prevista"
+        session_type = (
+            session.get("template")
+            or ("Descanso" if sport == "Descanso" else "Sesión prevista")
         )
         facts = []
         distance = session.get("distance_km")
@@ -1113,11 +1124,6 @@ def _calendar_training_cards(info):
         duration = session.get("duration_minutes")
         if isinstance(duration, (int, float)) and duration > 0:
             facts.append(f"{duration:.0f} min")
-        template = session.get("template")
-        template_html = (
-            f'<div class="training-template">{html.escape(str(template))}</div>'
-            if template and template != session_type else ""
-        )
         label = "PLAN ADAPTADO" if session.get("adapted") else "SESIÓN PREVISTA"
         card_class = "training-card adapted-card" if session.get("adapted") else "training-card"
         cards.append(
@@ -1125,7 +1131,7 @@ def _calendar_training_cards(info):
             f'<div class="training-sport">{html.escape(sport)}</div>'
             f'<div class="training-type">{html.escape(str(session_type))}</div>'
             f'<div class="training-facts">{html.escape(" · ".join(facts))}</div>'
-            f'{template_html}</div>'
+            '</div>'
         )
     return "".join(cards)
 
@@ -1322,8 +1328,8 @@ def _render_day_detail(selected_day, event, days):
                 matched = evaluation.get("matched_session") or {}
                 st.success(
                     "Asociada a: "
-                    f"{matched.get('sport', '—')} · {matched.get('session_type') or 'sesión prevista'} · "
-                    f"{matched.get('zone') or 'sin zona'} · {matched.get('terrain') or 'sin terreno'}"
+                    f"{matched.get('sport', '—')} · {matched.get('zone') or 'sin zona'} · "
+                    f"{matched.get('terrain') or 'sin terreno'}"
                 )
                 st.caption(f"Fecha objetivo original: {evaluation.get('target_date', '—')}")
                 protocol_facts = []

@@ -11,6 +11,8 @@ import streamlit as st
 
 from config import PROJECT_ROOT
 from ML.dataset import TrainingDataset, validate_consecutive_context
+from ML.historical_context_selector import select_historical_context
+from ML.predict_next_week import build_prediction_candidates, save_prediction_files
 from backend.ui_translations import display_es
 
 
@@ -46,22 +48,33 @@ LOAD_SCRIPTS = (
 
 PREDICTIONS_DIR = PROJECT_ROOT / "ML" / "results" / "predictions"
 PROCESSED_DATA_DIR = PROJECT_ROOT / "data" / "processed_data"
-PLANNED_HISTORY_DIR = PROJECT_ROOT / "data" / "planned_history"
 ADAPTIVE_PLANS_FILE = PROJECT_ROOT / "data" / "athlete_state" / "adaptive_published_plans.json"
 
 
 def _next_prediction_context():
-    dataset = TrainingDataset(
-        PROCESSED_DATA_DIR, context_weeks=4,
-        planned_history_dir=PLANNED_HISTORY_DIR,
-    )
-    context = validate_consecutive_context(dataset.weeks, 4)
-    target_start = date.fromisoformat(context[-1]["week_end"]) + timedelta(days=1)
-    target_end = target_start + timedelta(days=6)
+    # The base model receives human plans only. Approved adaptive plans are
+    # used solely to find the next unpublished operational week.
+    dataset = TrainingDataset(PROCESSED_DATA_DIR, context_weeks=4)
     current_monday = date.today() - timedelta(days=date.today().weekday())
+    payload, _ = _read_json(ADAPTIVE_PLANS_FILE)
+    active_ends = [
+        item.get("week_end") for item in (payload or {}).get("plans", [])
+        if item.get("status") == "active" and item.get("week_end")
+    ]
     maximum_target = current_monday + timedelta(days=7)
+    target_start = max(
+        maximum_target,
+        date.fromisoformat(max(active_ends)) + timedelta(days=1)
+        if active_ends else maximum_target,
+    )
+    target_end = target_start + timedelta(days=6)
+    context, selection = select_historical_context(
+        dataset.weeks, date.today(), 4, target_week_start=target_start
+    )
+    validate_consecutive_context(context, 4)
     return {
-        "weeks": context, "target_start": target_start, "target_end": target_end,
+        "weeks": context, "selection": selection,
+        "target_start": target_start, "target_end": target_end,
         "allowed": target_start <= maximum_target, "maximum_target": maximum_target,
     }
 
@@ -160,8 +173,16 @@ def _prediction_workout(session):
     if session.get("template"):
         return session["template"]
     if session.get("distance_km") is not None:
-        return f"{session['distance_km']} km"
+        return f"{_compact_number(session['distance_km'])} km"
     return "-"
+
+
+def _compact_number(value, decimals=1):
+    """Format UI values without exposing calculation-only float noise."""
+    if not isinstance(value, (int, float)):
+        return "—" if value is None else str(value)
+    rounded = round(float(value), decimals)
+    return str(int(rounded)) if rounded.is_integer() else f"{rounded:.{decimals}f}"
 
 
 def _render_prediction_archive_detail(entry):
@@ -197,7 +218,6 @@ def _render_prediction_archive_detail(entry):
                 "Fecha": date.fromisoformat(session["date"]),
                 "Día": display_es(session.get("weekday")),
                 "Deporte": display_es(session.get("sport")),
-                "Tipo de sesión": display_es(session.get("session_type")),
                 "Objetivo": display_es(session.get("objective_class")),
                 "Terreno": display_es(session.get("terrain")),
                 "Zona": session.get("zone"),
@@ -439,9 +459,15 @@ def _adaptive_approved_loads():
     for plan in (payload or {}).get("plans", []):
         if plan.get("status") != "active":
             continue
-        for day, value in (plan.get("daily_loads") or {}).items():
-            if isinstance(value, (int, float)):
-                daily[day] = float(value)
+        for session in plan.get("sessions") or []:
+            day = session.get("date")
+            if not day:
+                continue
+            try:
+                value = float(session.get("estimated_load") or 0)
+            except (TypeError, ValueError):
+                value = 0.0
+            daily[day] = daily.get(day, 0.0) + value
     return daily
 
 
@@ -585,7 +611,7 @@ def _render_session_detail(title, metadata, load, quality):
         "ascent_meters": "Desnivel positivo (m)", "descent_meters": "Desnivel negativo (m)",
         "duration": "Duración", "terrain": "Terreno",
         "garmin_training_load": "Carga de entrenamiento Garmin",
-        "session_type": "Tipo de sesión", "objective_class": "Objetivo",
+        "objective_class": "Objetivo",
         "zone": "Zona", "template": "Entrenamiento",
     }
     metadata_rows = [
@@ -1027,16 +1053,15 @@ def render_training_load():
         )
 
 
-def render(embedded=False):
+def _render_legacy(embedded=False):
     # STEP 6 - NEXT WEEK PREDICTION
     # ==========================================================
 
     st.header("1 · Generar la semana base" if embedded else "Predecir la próxima semana")
 
     st.write(
-        "Genera exclusivamente la semana inmediatamente posterior usando las últimas cuatro "
-        "semanas planificadas. Las semanas adaptativas aprobadas reemplazan progresivamente a "
-        "las planillas humanas dentro de este contexto."
+        "Genera exclusivamente la semana inmediatamente posterior. La semana base selecciona un bloque "
+        "humano similar al estado actual; el contexto actual se incorpora después, en la capa adaptativa."
     )
 
     try:
@@ -1045,28 +1070,22 @@ def render(embedded=False):
         planning = None
         st.error(f"No se puede construir un contexto de planificación válido: {error}")
     if planning:
-        source_labels = {
-            "human_plan": "Planilla del entrenador",
-            "adaptive_approved": "Semana adaptativa aprobada",
-        }
-        human_count = sum(
-            (item.get("metadata") or {}).get("source", "human_plan") == "human_plan"
-            for item in planning["weeks"]
-        )
-        adaptive_count = len(planning["weeks"]) - human_count
         st.success(
             f"Próxima semana disponible: {planning['target_start'].strftime('%d/%m/%Y')}–"
-            f"{planning['target_end'].strftime('%d/%m/%Y')} · Contexto: "
-            f"{human_count} del entrenador + {adaptive_count} adaptativa(s) aprobada(s)."
+            f"{planning['target_end'].strftime('%d/%m/%Y')}."
         )
-        st.dataframe(pd.DataFrame([{
-            "Semana": f"{date.fromisoformat(item['week_start']).strftime('%d/%m/%Y')}–"
-                       f"{date.fromisoformat(item['week_end']).strftime('%d/%m/%Y')}",
-            "Origen": source_labels.get(
-                (item.get("metadata") or {}).get("source", "human_plan"), "Planificada"
-            ),
-            "Estado": "Aprobada" if (item.get("metadata") or {}).get("source") == "adaptive_approved" else "Histórica",
-        } for item in planning["weeks"]]), use_container_width=True, hide_index=True)
+        selection = planning["selection"]
+        st.info(
+            "Contexto histórico seleccionado: "
+            f"{date.fromisoformat(selection['week_start']).strftime('%d/%m/%Y')}–"
+            f"{date.fromisoformat(selection['week_end']).strftime('%d/%m/%Y')} "
+            f"({selection['similarity_percent']:.1f}% de similitud). "
+            "Se compara volumen, distribución por disciplina, zonas, frecuencia y sesiones intensas."
+        )
+        if selection["decision"] == "progresión_histórica_compatible":
+            st.caption("Se avanzó al bloque histórico consecutivo para evitar repetir la misma referencia.")
+        elif selection["decision"] == "misma_semana_reutiliza_contexto":
+            st.caption("Se conserva el mismo bloque para que regenerar esta semana sea reproducible.")
         if not planning["allowed"]:
             st.info(
                 "Ya existe planificación aprobada hasta la próxima semana. Para evitar encadenar "
@@ -1123,6 +1142,20 @@ def render(embedded=False):
                 )
         else:
             prediction = json.loads(prediction_result.stdout)
+            # The adaptive step lives in the same planning flow. A newly
+            # generated base must replace any transient, previously fixed base
+            # rather than leaving the selector disabled on an older archive.
+            created = sorted(
+                PREDICTIONS_DIR.glob(f"prediction_{prediction['week_start']}_*.json"),
+                key=lambda path: path.stat().st_mtime,
+                reverse=True,
+            )
+            if created:
+                st.session_state["adaptive_base_prediction_id"] = created[0].stem
+                st.session_state.pop("adaptive_base_fixed", None)
+                st.session_state.pop("adaptive_prediction_selector", None)
+                st.session_state.pop("adaptive_proposal", None)
+                st.session_state.pop("adaptive_decision", None)
             st.success(
                 f"Predicción generada para el período {prediction['week_start']} "
                 f"a {prediction['week_end']}."
@@ -1132,7 +1165,7 @@ def render(embedded=False):
             for session in prediction["sessions"]:
                 workout = session.get("template")
                 if workout is None and session.get("distance_km") is not None:
-                    workout = f"{session['distance_km']} km"
+                    workout = f"{_compact_number(session['distance_km'])} km"
                 if workout is None and session["sport"] == "Descanso":
                     workout = "Descanso"
 
@@ -1141,10 +1174,11 @@ def render(embedded=False):
                         "Fecha": session["date"],
                         "Día": display_es(session["weekday"]),
                         "Deporte": display_es(session["sport"]),
-                        "Tipo de sesión": display_es(session.get("session_type")),
                         "Objetivo": display_es(session.get("objective_class")),
                         "Terreno": display_es(session.get("terrain")),
                         "Zona": session.get("zone"),
+                        "Duración (min)": _compact_number(session.get("duration_min"), 0),
+                        "Distancia (km)": _compact_number(session.get("distance_km")),
                         "Entrenamiento": display_es(workout),
                     }
                 )
@@ -1172,5 +1206,178 @@ def render(embedded=False):
                 "prediction_history_selected_id",
             ):
                 st.session_state.pop(key, None)
+
+    _render_prediction_history()
+
+
+def _candidate_rows(candidate):
+    """Compact and comparable description of a base-week alternative."""
+    sessions = candidate.get("sessions", [])
+    active = [session for session in sessions if session.get("sport") != "Descanso"]
+    sports = {}
+    intense = 0
+    for session in active:
+        sport = display_es(session.get("sport"))
+        sports[sport] = sports.get(sport, 0) + 1
+        blocks = session.get("blocks") or []
+        if any(str(block.get("zone") or "").upper() in {"Z4", "Z5", "Z6"} for block in blocks if isinstance(block, dict)):
+            intense += 1
+    style = candidate.get("style_score") or {}
+    selection = candidate.get("context_selection") or {}
+    return {
+        "Alternativa": candidate.get("alternative_rank"),
+        "Estilo histórico": style.get("global_score"),
+        "Similitud de contexto": selection.get("similarity_percent"),
+        "Bloque humano de referencia": (
+            f"{selection.get('week_start', '—')} a {selection.get('week_end', '—')}"
+        ),
+        "Sesiones": len(active),
+        "Deportes": " · ".join(f"{sport}: {count}" for sport, count in sports.items()) or "Descanso",
+        "Sesiones Z4–Z6": intense,
+    }
+
+
+def _render_candidate_week(candidate):
+    rows = []
+    for session in candidate.get("sessions", []):
+        workout = session.get("template") or _prediction_workout(session)
+        rows.append({
+            "Fecha": session.get("date"),
+            "Día": display_es(session.get("weekday")),
+            "Deporte": display_es(session.get("sport")),
+            "Terreno": display_es(session.get("terrain")),
+            "Zona": session.get("zone") or "—",
+            "Entrenamiento": display_es(workout),
+        })
+    st.dataframe(rows, hide_index=True, use_container_width=True)
+    components = (candidate.get("style_score") or {}).get("components") or {}
+    if components:
+        with st.expander("Detalle del score de estilo"):
+            st.dataframe(
+                [{"Dimensión": display_es(name), "Score": value} for name, value in components.items()],
+                hide_index=True,
+                use_container_width=True,
+                column_config={"Score": st.column_config.NumberColumn(format="%.1f")},
+            )
+
+
+def render(embedded=False):
+    st.header("1 · Generar la semana base" if embedded else "Predecir la próxima semana")
+    st.write(
+        "El modelo propone alternativas desde bloques de cuatro semanas de planillas humanas "
+        "similares a lo que realmente has realizado. Elige una semana base antes de editarla "
+        "o aplicar la capa adaptativa."
+    )
+    try:
+        planning = _next_prediction_context()
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        planning = None
+        st.error(f"No se puede construir un contexto de planificación válido: {error}")
+
+    if planning:
+        st.success(
+            f"Próxima semana disponible: {planning['target_start'].strftime('%d/%m/%Y')}–"
+            f"{planning['target_end'].strftime('%d/%m/%Y')}."
+        )
+        st.caption(
+            "Las alternativas usan únicamente semanas realmente realizadas como contexto. "
+            "Las semanas predichas o adaptadas no retroalimentan el modelo."
+        )
+        stored = st.session_state.get("base_week_candidates")
+        if stored and stored[0].get("week_start") != planning["target_start"].isoformat():
+            st.session_state.pop("base_week_candidates", None)
+
+    production_model_dir = PROJECT_ROOT / "ML" / "models" / "production"
+    required_models = [
+        "sport_model.pkl", "session_type_model.pkl", "terrain_model.pkl", "zone_model.pkl",
+        "objective_class_model.pkl", "objective_class_encoder.pkl", "objective_class_columns.pkl",
+        "distance_trail.pkl", "distance_corrida.pkl", "distance_bici.pkl",
+    ]
+    ready = all((production_model_dir / filename).exists() for filename in required_models)
+    if not ready:
+        st.warning("Los modelos de producción deben estar disponibles antes de generar alternativas.")
+
+    if st.button(
+        "Generar alternativas de semana base",
+        disabled=not ready or planning is None or not planning["allowed"],
+        use_container_width=True,
+        key="generate_base_week_alternatives",
+    ):
+        with st.spinner("Generando y evaluando alternativas contra el estilo histórico..."):
+            try:
+                st.session_state["base_week_candidates"] = build_prediction_candidates(limit=5)
+            except Exception as error:
+                st.error(f"No se pudieron generar las alternativas: {error}")
+
+    candidates = st.session_state.get("base_week_candidates") or []
+    if candidates:
+        st.subheader("Alternativas de semana base")
+        policy = candidates[0].get("selection_policy") or {}
+        if policy:
+            st.info(
+                "Selección: el contexto recupera bloques cercanos y el estilo humano decide el orden final. "
+                f"Se evaluaron {policy.get('contexts_close', 0)} bloques cercanos de "
+                f"{policy.get('contexts_retrieved', 0)} recuperados "
+                f"(similitud mínima: {policy.get('context_similarity_floor_percent', 0):.1f}%)."
+            )
+        st.caption(
+            "El score de estilo reutiliza el cálculo de evaluación de modelos y compara cada "
+            "alternativa con las últimas 30 semanas humanas disponibles. Mide adherencia al estilo, "
+            "no una garantía de resultado fisiológico. Se excluyen alternativas bajo 70%. "
+            "Además, se descarta una alternativa si reproduce exactamente alguna de las cuatro "
+            "últimas semanas base predichas."
+        )
+        discarded_duplicates = max(
+            (candidate.get("novelty") or {}).get("discarded_exact_duplicates", 0)
+            for candidate in candidates
+        )
+        if discarded_duplicates:
+            st.info(
+                f"Se descartaron {discarded_duplicates} alternativa(s) idéntica(s) a una semana "
+                "base reciente antes de mostrar estas opciones."
+            )
+        rows = [_candidate_rows(candidate) for candidate in candidates]
+        st.dataframe(
+            rows,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Estilo histórico": st.column_config.NumberColumn(format="%.1f%%"),
+                "Similitud de contexto": st.column_config.NumberColumn(format="%.1f%%"),
+            },
+        )
+        index_by_rank = {candidate["alternative_rank"]: candidate for candidate in candidates}
+        selected_rank = st.radio(
+            "Semana base a revisar",
+            options=list(index_by_rank),
+            horizontal=True,
+            format_func=lambda rank: f"Alternativa {rank} · estilo {index_by_rank[rank]['style_score']['global_score']:.1f}%",
+            key="base_week_candidate_choice",
+        )
+        selected = index_by_rank[selected_rank]
+        st.markdown(f"#### Alternativa {selected_rank}")
+        _render_candidate_week(selected)
+
+        if st.button(
+            "Usar esta alternativa como semana base",
+            type="primary",
+            use_container_width=True,
+            key="save_selected_base_week_alternative",
+        ):
+            save_prediction_files(selected)
+            created = sorted(
+                PREDICTIONS_DIR.glob(f"prediction_{selected['week_start']}_*.json"),
+                key=lambda path: path.stat().st_mtime,
+                reverse=True,
+            )
+            if created:
+                st.session_state["adaptive_base_prediction_id"] = created[0].stem
+                st.session_state.pop("adaptive_base_fixed", None)
+                st.session_state.pop("adaptive_prediction_selector", None)
+                st.session_state.pop("adaptive_proposal", None)
+                st.session_state.pop("adaptive_decision", None)
+            st.session_state.pop("base_week_candidates", None)
+            _rebuild_load("predicted_load.py")
+            st.success("Semana base guardada. Continúa con Ajustes manuales o Adaptación y plan definitivo.")
 
     _render_prediction_history()

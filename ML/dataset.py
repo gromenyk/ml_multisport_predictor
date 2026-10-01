@@ -33,8 +33,9 @@ class TrainingDataset:
                 metadata = dict(week.get("metadata") or {})
                 metadata.setdefault("source", default_source)
                 week["metadata"] = metadata
-                # Adaptive-approved weeks intentionally take precedence for
-                # inference without modifying the original human plan files.
+                # An explicit caller-supplied overlay can take precedence
+                # without modifying the original human plan files. The
+                # production next-week predictor intentionally uses no overlay.
                 by_start[week["week_start"]] = week
         return sorted(by_start.values(), key=lambda week: week["week_start"])
 

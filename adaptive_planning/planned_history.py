@@ -31,9 +31,48 @@ def _model_session(session):
     return value
 
 
+def _session_priority(session):
+    """Choose a stable primary session when a day contains two sessions."""
+    for field in ("estimated_load", "duration_min", "estimated_duration_minutes", "distance_km"):
+        try:
+            value = float(session.get(field) or 0)
+        except (TypeError, ValueError):
+            value = 0.0
+        if value > 0:
+            return value
+    return 0.0
+
+
+def _weekly_model_context(sessions, week_start, week_end):
+    """Reduce a multi-session week to the seven daily slots expected by ML."""
+    grouped = {}
+    for session in sessions:
+        day = session.get("date")
+        if day:
+            grouped.setdefault(day, []).append(session)
+    start = datetime.fromisoformat(week_start).date()
+    expected_days = {(start.fromordinal(start.toordinal() + offset)).isoformat() for offset in range(7)}
+    if set(grouped) != expected_days or len(grouped) != 7:
+        raise ValueError("La semana aprobada debe cubrir exactamente siete fechas consecutivas.")
+    primary, additional = [], {}
+    for day in sorted(grouped):
+        day_sessions = grouped[day]
+        selected = max(day_sessions, key=_session_priority)
+        primary.append(_model_session(selected))
+        extras = [_model_session(item) for item in day_sessions if item is not selected]
+        if extras:
+            additional[day] = extras
+    if primary[0]["date"] != week_start or primary[-1]["date"] != week_end:
+        raise ValueError("Las fechas de la semana aprobada no coinciden con sus sesiones.")
+    return primary, additional
+
+
 def export_approved_plan(plan):
     """Atomically export one active publication for next-week inference."""
-    sessions = sorted((_model_session(item) for item in plan.get("sessions", [])), key=lambda item: item["date"])
+    week_start, week_end = plan.get("week_start"), plan.get("week_end")
+    sessions, additional_sessions = _weekly_model_context(
+        plan.get("sessions", []), week_start, week_end
+    )
     if len(sessions) != 7:
         raise ValueError("La semana aprobada debe contener exactamente siete días.")
     week_start, week_end = plan.get("week_start"), plan.get("week_end")
@@ -53,6 +92,7 @@ def export_approved_plan(plan):
             "engine_version": plan.get("engine_version"),
             "approved_at": plan.get("published_at"),
             "exported_at": _now(),
+            "additional_sessions_by_date": additional_sessions,
         },
     }
     HISTORY_DIR.mkdir(parents=True, exist_ok=True)

@@ -33,6 +33,8 @@ SNAPSHOT_DIR = PROJECT_ROOT / "data" / "athlete_state" / "snapshots"
 SEGMENT_CATALOG_FILE = PROJECT_ROOT / "data" / "segments" / "segment_catalog.json"
 SEGMENT_ATTEMPTS_FILE = PROJECT_ROOT / "data" / "segments" / "segment_attempts.json"
 ROUTE_FAMILIES_FILE = PROJECT_ROOT / "data" / "segments" / "route_families.json"
+RECENT_METRIC_TREND_DAYS = 90
+MIN_RECENT_METRIC_ACTIVITIES = 4
 
 
 def _json(path: Path, default: dict) -> dict:
@@ -54,6 +56,32 @@ def _average(values):
 def _latest_on_or_before(records, as_of):
     applicable = [item for item in records if item.get("date", "") <= as_of.isoformat()]
     return max(applicable, key=lambda item: item["date"]) if applicable else None
+
+
+def _linear_trend_per_30d(rows):
+    """Fit a time trend to one already-summarized observation per activity."""
+    if len(rows) < 2:
+        return None
+    origin = date.fromisoformat(rows[0]["date"])
+    x_values = [(date.fromisoformat(item["date"]) - origin).days for item in rows]
+    y_values = [float(item["value"]) for item in rows]
+    x_mean, y_mean = mean(x_values), mean(y_values)
+    denominator = sum((value - x_mean) ** 2 for value in x_values)
+    if denominator <= 0:
+        return None
+    return 30 * sum(
+        (x_value - x_mean) * (y_value - y_mean)
+        for x_value, y_value in zip(x_values, y_values)
+    ) / denominator
+
+
+def _active_window(as_of):
+    windows = _json(WINDOWS_FILE, {"windows": []}).get("windows", [])
+    active = [
+        item for item in windows
+        if item.get("start_date", "") <= as_of.isoformat() <= item.get("end_date", "")
+    ]
+    return max(active, key=lambda item: item.get("start_date", "")) if active else None
 
 
 def _date_range(as_of: date, days: int):
@@ -324,11 +352,23 @@ def _recovery_state(as_of: date) -> dict[str, Any]:
         )
         for key in keys
     }
+    weekly_deviations = {
+        key: (
+            averages_7[key] - baselines[key]
+            if _finite(averages_7.get(key)) and _finite(baselines.get(key))
+            else None
+        )
+        for key in keys
+    }
     return {
         "latest": latest,
         "averages_7d": averages_7,
         "personal_baseline_60d": baselines,
         "latest_deviation": deviations,
+        # The latest night remains available for daily review. Weekly planning
+        # uses a seven-day trend so a single observation cannot trigger a
+        # whole-week reduction.
+        "weekly_deviation": weekly_deviations,
         "records_7d": len(last_7),
         "records_total": len(records),
         "fatigue": {
@@ -387,19 +427,28 @@ def _progress_state(as_of: date) -> dict[str, Any]:
                 ),
             )
         ].append(item)
+    active_window = _active_window(as_of)
     result = {}
     for (metric_id, discipline, heart_rate_zone_id, slope_band), rows in groups.items():
         rows.sort(key=lambda item: (item["date"], item.get("components", {}).get("start_time", "")))
         summarized = activity_medians(rows)
-        origin = date.fromisoformat(summarized[0]["date"])
-        x = [(date.fromisoformat(item["date"]) - origin).days for item in summarized]
-        y = [float(item["value"]) for item in summarized]
-        x_mean = mean(x)
-        denominator = sum((value - x_mean) ** 2 for value in x)
-        slope = (
-            sum((xi - x_mean) * (yi - mean(y)) for xi, yi in zip(x, y)) / denominator
-            if len(rows) >= 2 and denominator > 0 else None
-        )
+        historical_trend = _linear_trend_per_30d(summarized)
+        recent_cutoff = as_of - timedelta(days=RECENT_METRIC_TREND_DAYS)
+        decision_rows = [
+            item for item in summarized
+            if date.fromisoformat(item["date"]) >= recent_cutoff
+        ]
+        decision_source = f"últimos {RECENT_METRIC_TREND_DAYS} días"
+        if len(decision_rows) < MIN_RECENT_METRIC_ACTIVITIES and active_window:
+            window_rows = [
+                item for item in summarized
+                if active_window["start_date"] <= item["date"] <= active_window["end_date"]
+            ]
+            if len(window_rows) >= MIN_RECENT_METRIC_ACTIVITIES:
+                decision_rows = window_rows
+                decision_source = f"ventana activa: {active_window.get('name', 'sin nombre')}"
+        decision_has_evidence = len(decision_rows) >= MIN_RECENT_METRIC_ACTIVITIES
+        decision_trend = _linear_trend_per_30d(decision_rows) if decision_has_evidence else None
         latest = summarized[-1]
         series_label = " · ".join(
             value for value in (heart_rate_zone_id, slope_band) if value
@@ -422,9 +471,24 @@ def _progress_state(as_of: date) -> dict[str, Any]:
             "days_since_measurement": (as_of - date.fromisoformat(latest["date"])).days,
             "observations": len(rows),
             "activity_summaries": len(summarized),
-            "mean": mean(y),
-            "variability": pstdev(y) if len(y) > 1 else None,
-            "trend_per_30d": slope * 30 if slope is not None else None,
+            "mean": mean(float(item["value"]) for item in summarized),
+            "variability": (
+                pstdev(float(item["value"]) for item in summarized)
+                if len(summarized) > 1 else None
+            ),
+            # Historical trend remains a reference. The adaptive engine uses
+            # decision_trend_per_30d only when recent evidence is sufficient.
+            "trend_per_30d": historical_trend,
+            "historical_trend_per_30d": historical_trend,
+            "decision_trend_per_30d": decision_trend,
+            "decision_trend_source": (
+                decision_source if decision_has_evidence else "evidencia reciente insuficiente"
+            ),
+            "decision_activity_summaries": len(decision_rows),
+            "decision_confidence": (
+                "alta" if len(decision_rows) >= 6 else "media"
+                if decision_has_evidence else "insuficiente"
+            ),
             "confidence": "alta" if len(summarized) >= 10 else "media" if len(summarized) >= 5 else "baja",
             "observations_data": summarized,
         }
@@ -510,12 +574,13 @@ def _context_state(as_of: date) -> dict[str, Any]:
 
 
 def _interpret(training, recovery) -> dict[str, Any]:
+    """Build weekly planning readiness from a 7-day recovery trend."""
     reasons_positive = []
     reasons_limiting = []
     score = 50.0
     evidence = 0
-    latest = recovery.get("latest") or {}
-    deviation = recovery.get("latest_deviation", {})
+    averages = recovery.get("averages_7d") or {}
+    deviation = recovery.get("weekly_deviation", {})
     sleep_delta = deviation.get("sleep_duration_hours")
     if _finite(sleep_delta):
         evidence += 1
@@ -537,19 +602,20 @@ def _interpret(training, recovery) -> dict[str, Any]:
         (reasons_limiting if resting_delta > 0 else reasons_positive).append(
             f"FC en reposo {abs(resting_delta):.1f} bpm {'sobre' if resting_delta > 0 else 'bajo'} la línea base."
         )
-    fatigue = latest.get("subjective_fatigue")
+    fatigue = averages.get("subjective_fatigue")
     if _finite(fatigue):
         evidence += 1
         score += (5 - fatigue) * 4
         (reasons_limiting if fatigue >= 7 else reasons_positive if fatigue <= 3 else []).append(
-            f"Fatiga subjetiva {fatigue:.0f}/10."
+            f"Fatiga subjetiva media de 7 días {fatigue:.1f}/10."
         )
-    muscular_fatigue = latest.get("muscle_fatigue", latest.get("muscle_soreness"))
+    muscular_fatigue = averages.get("muscle_fatigue")
     if _finite(muscular_fatigue):
         evidence += 1
         score += (4 - muscular_fatigue) * 3
         if muscular_fatigue >= 7:
-            reasons_limiting.append(f"Fatiga muscular {muscular_fatigue:.0f}/10.")
+            reasons_limiting.append(f"Fatiga muscular media de 7 días {muscular_fatigue:.1f}/10.")
+    latest = recovery.get("latest") or {}
     if latest.get("has_discomfort"):
         evidence += 1
         score -= 20
@@ -573,7 +639,7 @@ def _interpret(training, recovery) -> dict[str, Any]:
         "confidence": "alta" if evidence >= 5 else "media" if evidence >= 3 else "baja",
         "positive_factors": reasons_positive,
         "limiting_factors": reasons_limiting,
-        "note": "Indicador descriptivo, no diagnóstico médico ni autorización automática para modificar la carga.",
+        "note": "Indicador semanal basado en promedios de bienestar de 7 días frente a tu línea base personal; la última noche se muestra como contexto. No es un diagnóstico médico.",
     }
 
 

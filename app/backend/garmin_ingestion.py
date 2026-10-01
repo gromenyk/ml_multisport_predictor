@@ -55,6 +55,11 @@ def extract_fit_activities():
     if not EXTRACTOR_PATH.exists():
         return False, f"Extractor not found: {EXTRACTOR_PATH}"
 
+    before_extraction = {
+        path.name: path.stat().st_mtime_ns
+        for path in ACTIVITIES_DIR.glob("activity_*.json")
+    } if ACTIVITIES_DIR.exists() else {}
+
     result = subprocess.run(
         [sys.executable, str(EXTRACTOR_PATH)],
         cwd=PROJECT_ROOT,
@@ -66,6 +71,10 @@ def extract_fit_activities():
     output = (result.stdout + "\n" + result.stderr).strip()
     if result.returncode != 0:
         return False, output
+    changed_activities = [
+        path for path in ACTIVITIES_DIR.glob("activity_*.json")
+        if before_extraction.get(path.name) != path.stat().st_mtime_ns
+    ] if ACTIVITIES_DIR.exists() else []
     try:
         from metrics.orchestrator import evaluate_all_activities
 
@@ -82,6 +91,24 @@ def extract_fit_activities():
             f"de métricas: {error}"
         )
         return False, output
+    try:
+        from backend.segment_matching import evaluate_activity_segments
+
+        segment_summaries = [
+            evaluate_activity_segments(path)
+            for path in changed_activities
+        ]
+        detected = sum(item.get("attempts_detected", 0) for item in segment_summaries)
+        failures = [item for item in segment_summaries if item.get("failure")]
+        output += (
+            "\n\nComparaciÃ³n incremental de segmentos\n"
+            f"Actividades nuevas comparadas: {len(segment_summaries)}\n"
+            f"Intentos de segmento detectados: {detected}"
+        )
+        if failures:
+            output += f"\nActividades sin comparar: {len(failures)}"
+    except Exception as error:
+        output += f"\n\nNo se pudo actualizar los segmentos: {error}"
     try:
         from backend.route_matching import update_route_families
 

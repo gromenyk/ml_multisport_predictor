@@ -838,6 +838,92 @@ def compare_joint_distribution(
     )
 
 
+def _week_values(week):
+    """Extract the exact signature fields used by the pipeline evaluation."""
+    sports, sessions, objectives, terrains, zones, distances = [], [], [], [], [], []
+    by_weekday = {item.get("weekday"): item for item in week.get("sessions", [])}
+    for weekday in WEEKDAYS:
+        session = by_weekday.get(weekday)
+        if session is None:
+            sports.append("Descanso")
+            sessions.append(None)
+            objectives.append(None)
+            terrains.append(None)
+            zones.append(None)
+            distances.append(None)
+            continue
+        sport = session.get("sport") or "Descanso"
+        terrain = session.get("terrain")
+        blocks = session.get("blocks") or []
+        first_block = blocks[0] if blocks and isinstance(blocks[0], dict) else {}
+        sports.append(sport)
+        sessions.append(session.get("session_type"))
+        objectives.append(session.get("objective_class"))
+        terrains.append(None if terrain == "Subida" else terrain)
+        zones.append(
+            first_block.get("zone")
+            if terrain != "Subida" and first_block.get("zone") in ZONES
+            else None
+        )
+        distances.append(
+            first_block.get("distance_km")
+            if len(blocks) == 1 and first_block.get("type") == "steady"
+            else None
+        )
+    return sports, sessions, objectives, terrains, zones, distances
+
+
+def calculate_style_score(real_weeks, predicted_weeks):
+    """Calculate the current pipeline Style Score for arbitrary plan weeks.
+
+    This is deliberately the same signature-based score shown during model
+    evaluation.  In planning it expresses adherence to the human-plan corpus,
+    not future predictive accuracy.
+    """
+    real_values = [_week_values(week) for week in real_weeks]
+    predicted_values = [_week_values(week) for week in predicted_weeks]
+    real_sports, real_sessions, real_objectives, real_terrain, real_zone, real_distance = map(list, zip(*real_values))
+    pred_sports, pred_sessions, pred_objectives, pred_terrain, pred_zone, pred_distance = map(list, zip(*predicted_values))
+
+    distance_categories = sorted({
+        value for week in (real_distance + pred_distance) for value in week if value is not None
+    })
+    if any(value is None for week in (real_distance + pred_distance) for value in week):
+        distance_categories = [None] + distance_categories
+    objective_categories = sorted({
+        value for week in (real_objectives + pred_objectives) for value in week if value is not None
+    })
+    if any(value is None for week in (real_objectives + pred_objectives) for value in week):
+        objective_categories = [None] + objective_categories
+
+    sport_scores = evaluate_signature(real_sports, pred_sports, SPORTS)
+    session_scores = evaluate_signature(real_sessions, pred_sessions, SESSION_TYPES)
+    objective_scores = evaluate_signature(real_objectives, pred_objectives, objective_categories)
+    terrain_scores = evaluate_signature(real_terrain, pred_terrain, TERRAINS)
+    zone_scores = evaluate_signature(real_zone, pred_zone, ZONES)
+    distance_scores = evaluate_signature(real_distance, pred_distance, distance_categories)
+    consistency = consistency_score(pred_sports, pred_sessions)
+    joint = compare_joint_distribution(
+        joint_distribution(real_sports, real_sessions),
+        joint_distribution(pred_sports, pred_sessions),
+    )
+    components = {
+        "deporte": sport_scores["overall"],
+        "tipo_sesion": session_scores["overall"],
+        "objetivo": objective_scores["overall"],
+        "terreno": terrain_scores["overall"],
+        "zona": zone_scores["overall"],
+        "distancia": distance_scores["overall"],
+        "consistencia": consistency,
+        "combinacion_deporte_sesion": joint,
+    }
+    return {
+        "global_score": round(float(np.mean(list(components.values()))), 1),
+        "components": {key: round(float(value), 1) for key, value in components.items()},
+        "reference_weeks": len(real_weeks),
+    }
+
+
 # ==========================================================
 # Main
 # ==========================================================

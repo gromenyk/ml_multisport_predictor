@@ -27,11 +27,14 @@ def _number(value):
 
 
 def _snapshot(session):
-    parts = [session.get("sport"), session.get("session_type"), session.get("zone")]
+    # ``session_type`` is kept only for legacy model compatibility. It is not
+    # part of the physiological identity or adaptive decision of a session.
+    parts = [session.get("sport"), session.get("zone"), session.get("terrain")]
     return {
         "date": session.get("date"), "sport": session.get("sport"),
-        "session_type": session.get("session_type"), "zone": session.get("zone"),
+        "zone": session.get("zone"),
         "terrain": session.get("terrain"), "distance_km": session.get("distance_km"),
+        "duration_min": session.get("duration_min"),
         "label": " · ".join(str(item) for item in parts if item),
     }
 
@@ -41,6 +44,25 @@ def _scale_distance(session, factor):
     if _number(session.get("distance_km")):
         session["distance_km"] = round(session["distance_km"] * factor, 1)
     for block in session.get("blocks", []):
+        if _number(block.get("distance_km")):
+            block["distance_km"] = round(block["distance_km"] * factor, 1)
+
+
+def _session_duration_minutes(session):
+    if _number(session.get("duration_min")):
+        return float(session["duration_min"])
+    return sum(float(block.get("duration_min") or 0) for block in session.get("blocks", []) if isinstance(block, dict))
+
+
+def _scale_kayak_duration(session, factor):
+    """Progress kayak through time; distance remains an expected consequence."""
+    if _number(session.get("duration_min")):
+        session["duration_min"] = round(session["duration_min"] * factor)
+    if _number(session.get("distance_km")):
+        session["distance_km"] = round(session["distance_km"] * factor, 1)
+    for block in session.get("blocks", []):
+        if _number(block.get("duration_min")):
+            block["duration_min"] = round(block["duration_min"] * factor)
         if _number(block.get("distance_km")):
             block["distance_km"] = round(block["distance_km"] * factor, 1)
 
@@ -120,7 +142,7 @@ def _carry_in_intensity_sessions(week_start, days=2):
 
 
 def _priorities_and_metrics(context, goal_names, metric_catalog):
-    priorities, assigned_ids, primary_ids = [], set(), set()
+    priorities, assigned_ids, primary_ids, metric_rules = [], set(), set(), []
     discipline_weight_totals = {}
     for window in context.get("active_windows", []):
         weights = window.get("discipline_weights", {})
@@ -138,8 +160,18 @@ def _priorities_and_metrics(context, goal_names, metric_catalog):
             priority = assignment.get("priority")
             goal_id = assignment.get("development_goal_id")
             priorities.append({"goal_id": goal_id, "goal": goal_names.get(goal_id, goal_id), "priority": priority})
-            ids = {item.get("metric_id") for item in assignment.get("metrics", []) if item.get("metric_id")}
+            assigned_metrics = assignment.get("metrics", [])
+            ids = {item.get("metric_id") for item in assigned_metrics if item.get("metric_id")}
             assigned_ids.update(ids)
+            for item in assigned_metrics:
+                metric_id = item.get("metric_id")
+                if metric_id:
+                    metric_rules.append({
+                        "metric_id": metric_id,
+                        "discipline": _normalized_discipline(item.get("discipline")),
+                        "priority": priority,
+                        "goal_id": goal_id,
+                    })
             if priority == "Primary":
                 primary_ids.update(ids)
     priorities.sort(key=lambda item: {"Primary": 0, "Secondary": 1, "Supporting": 2}.get(item["priority"], 9))
@@ -152,13 +184,39 @@ def _priorities_and_metrics(context, goal_names, metric_catalog):
         {key: 100.0 * value / total for key, value in discipline_weight_totals.items()}
         if total > 0 else {}
     )
-    return priorities, assigned_ids, primary_ids, primary_disciplines, discipline_weights
+    return priorities, assigned_ids, primary_ids, primary_disciplines, discipline_weights, metric_rules
 
 
 def _normalized_discipline(value):
     if not value:
         return None
     return "Bici" if str(value).lower().startswith("bici") else value
+
+
+def _measurement_matches_rule(row, rule, metric_by_id=None):
+    """Honor the metric + discipline specified by a window assignment."""
+    if row.get("metric_id") != rule.get("metric_id"):
+        return False
+    observed = _normalized_discipline(row.get("discipline"))
+    assigned = _normalized_discipline(rule.get("discipline"))
+    if assigned:
+        return observed is None or observed == assigned
+    if observed is None or not metric_by_id:
+        return True
+    catalog_disciplines = {
+        _normalized_discipline(value)
+        for value in metric_by_id.get(rule.get("metric_id"), {}).get("disciplines", [])
+    }
+    return not catalog_disciplines or observed in catalog_disciplines
+
+
+def _filter_measurements_for_rules(rows, rules, metric_by_id=None):
+    if not rules:
+        return list(rows)
+    return [
+        row for row in rows
+        if any(_measurement_matches_rule(row, rule, metric_by_id) for rule in rules)
+    ]
 
 
 def _geographic_signals(geographic_progress):
@@ -248,8 +306,13 @@ def _choose_focus_discipline(
     stalled = {discipline: False for discipline in candidate_disciplines}
     for item in progress.values():
         discipline = _normalized_discipline(item.get("discipline"))
-        trend = item.get("trend_per_30d")
-        if discipline in stalled and _number(trend) and trend <= 0:
+        trend = item.get("decision_trend_per_30d")
+        if (
+            discipline in stalled
+            and _number(trend)
+            and trend <= 0
+            and item.get("decision_confidence") in {"media", "alta"}
+        ):
             stalled[discipline] = True
     geographic_signals = geographic_signals or {}
     geographic_decline = {
@@ -336,17 +399,25 @@ def _active_recipe_signals(context, metric_catalog, freshness, progress, weights
             goal_id = assignment.get("development_goal_id")
             if goal_id not in RECIPES:
                 continue
-            assigned_metrics = {
-                item.get("metric_id") for item in assignment.get("metrics", [])
-                if item.get("metric_id")
-            }
+            assigned_metric_rules = [
+                {
+                    "metric_id": metric.get("metric_id"),
+                    "discipline": _normalized_discipline(metric.get("discipline")),
+                    "priority": assignment.get("priority"),
+                }
+                for metric in assignment.get("metrics", [])
+                if metric.get("metric_id")
+            ]
+            assigned_metrics = {rule["metric_id"] for rule in assigned_metric_rules}
             current = assigned.setdefault(goal_id, {
                 "goal_id": goal_id,
                 "recipe": RECIPES[goal_id],
                 "priority": assignment.get("priority"),
                 "metric_ids": set(),
+                "metric_rules": [],
             })
             current["metric_ids"].update(assigned_metrics or RECIPES[goal_id]["metric_ids"])
+            current["metric_rules"].extend(assigned_metric_rules)
             if priority_points.get(assignment.get("priority"), 0) > priority_points.get(current.get("priority"), 0):
                 current["priority"] = assignment.get("priority")
 
@@ -355,7 +426,7 @@ def _active_recipe_signals(context, metric_catalog, freshness, progress, weights
     for goal_id, item in assigned.items():
         relevant_freshness = [
             row for row in freshness
-            if row.get("metric_id") in item["metric_ids"]
+            if _filter_measurements_for_rules([row], item["metric_rules"], metric_by_id)
             and (
                 not _normalized_discipline(row.get("discipline"))
                 or _normalized_discipline(row.get("discipline")) in eligible_disciplines
@@ -364,7 +435,7 @@ def _active_recipe_signals(context, metric_catalog, freshness, progress, weights
         urgency = max((STATUS_URGENCY.get(row.get("status"), 0) for row in relevant_freshness), default=0)
         relevant_progress = [
             row for row in progress.values()
-            if row.get("metric_id") in item["metric_ids"]
+            if _filter_measurements_for_rules([row], item["metric_rules"], metric_by_id)
             and (
                 not _normalized_discipline(row.get("discipline"))
                 or _normalized_discipline(row.get("discipline")) in eligible_disciplines
@@ -372,8 +443,8 @@ def _active_recipe_signals(context, metric_catalog, freshness, progress, weights
         ]
         stalled_rows = [
             row for row in relevant_progress
-            if _number(row.get("trend_per_30d")) and row["trend_per_30d"] <= 0
-            and row.get("confidence") in {"media", "alta"}
+            if _number(row.get("decision_trend_per_30d")) and row["decision_trend_per_30d"] <= 0
+            and row.get("decision_confidence") in {"media", "alta"}
         ]
         discipline_candidates = []
         ranked_measurements = sorted(
@@ -433,7 +504,18 @@ def _active_recipe_signals(context, metric_catalog, freshness, progress, weights
                 "continuidad del estímulo"
             ),
         })
-    return sorted(signals, key=lambda item: item["score"], reverse=True)
+    # The manual priority of the active window is a hard tier, not merely one
+    # score component. A pending Supporting metric may rank recipes within its
+    # tier, but cannot displace an applicable Primary or Secondary objective.
+    highest_tier = max(
+        (priority_points.get(item.get("assignment_priority"), 0) for item in signals),
+        default=0,
+    )
+    eligible = [
+        item for item in signals
+        if priority_points.get(item.get("assignment_priority"), 0) == highest_tier
+    ]
+    return sorted(eligible, key=lambda item: item["score"], reverse=True)
 
 
 def _rest_session_like(session):
@@ -446,6 +528,14 @@ def _rest_session_like(session):
 
 
 def _create_aerobic_session(session, discipline, training):
+    if discipline == "Kayak":
+        return {
+            "date": session.get("date"), "weekday": session.get("weekday"),
+            "sport": discipline, "session_type": None, "structured": False,
+            "objective_class": "adaptive_emphasis", "template": "Sesión creada por énfasis de ventana",
+            "terrain": None, "zone": "Z2", "duration_min": 60, "distance_km": 10.0,
+            "blocks": [{"type": "steady", "zone": "Z2", "duration_min": 60, "distance_km": 10.0}],
+        }
     defaults = {"Bici": 30.0, "Corrida": 6.0, "Trail": 6.0, "Kayak": 5.0}
     recent = training.get("discipline_progression_28d", {}).get(discipline, {})
     longest = recent.get("longest_session_28d_km")
@@ -453,7 +543,7 @@ def _create_aerobic_session(session, discipline, training):
     terrain = "Plano" if discipline == "Kayak" else "Montaña" if discipline == "Trail" else "Ondulado"
     return {
         "date": session.get("date"), "weekday": session.get("weekday"),
-        "sport": discipline, "session_type": "Aeróbico continuo", "structured": False,
+        "sport": discipline, "session_type": None, "structured": False,
         "objective_class": "adaptive_emphasis", "template": "Sesión creada por énfasis de ventana",
         "terrain": terrain, "zone": "Z2", "distance_km": distance,
         "blocks": [{"type": "steady", "zone": "Z2", "distance_km": distance}],
@@ -475,18 +565,32 @@ def _apply_progression_memory(
         "well_tolerated_streak": memory.get("well_tolerated_streak", 0),
         "result": "Sin cambio",
     }
+    is_kayak = discipline == "Kayak"
     candidates = [
         item for item in sessions
         if item.get("sport") == discipline and not item.get("structured")
-        and _number(item.get("distance_km"))
+        and (_session_duration_minutes(item) > 0 if is_kayak else _number(item.get("distance_km")))
     ]
-    if not candidates or not _number(reference.get("distance_km")):
+    reference_value = reference.get("duration_minutes") if is_kayak else reference.get("distance_km")
+    if not candidates or not _number(reference_value):
         evidence["reason"] = "No existe una sesión comparable o una referencia evaluada."
         return evidence
-    session = max(candidates, key=lambda item: float(item["distance_km"]))
-    current = float(session["distance_km"])
-    reference_distance = float(reference["distance_km"])
-    minimum = 5.0 if discipline == "Bici" else 1.0
+    weekend_days = {"sáb", "sab", "sábado", "sat", "dom", "domingo", "sun"}
+
+    def progression_session_key(item):
+        """Prefer a free weekend only when comparable sessions tie in size."""
+        size = _session_duration_minutes(item) if is_kayak else float(item["distance_km"])
+        day = availability.get(item.get("date"), {"status": "free"})
+        preferred_weekend = (
+            item.get("weekday") in weekend_days and day.get("status") == "free"
+        )
+        return size, preferred_weekend
+
+    session = max(candidates, key=progression_session_key)
+    current = _session_duration_minutes(session) if is_kayak else float(session["distance_km"])
+    reference_distance = float(reference_value)
+    minimum = 10.0 if is_kayak else 5.0 if discipline == "Bici" else 1.0
+    unit = "min" if is_kayak else "km"
 
     if action == "progress" and capacity_mode == "build":
         step = .10 if discipline in {"Bici", "Kayak"} else .07
@@ -494,37 +598,37 @@ def _apply_progression_memory(
         target = current + strength * (full_target - current)
         if target > current and target - current >= minimum:
             before = _snapshot(session)
-            _scale_distance(session, target / current)
+            (_scale_kayak_duration if is_kayak else _scale_distance)(session, target / current)
             changes.append({
                 "change_id": f"memory_progress_{discipline}_{session['date']}",
                 "type": "scale_distance", "rule_id": "M1",
                 "title": f"Progresar la sesión de referencia de {discipline}",
                 "before": before, "after": _snapshot(session),
                 "signal": (
-                    f"Última respuesta evaluable bien tolerada; referencia {reference_distance:.1f} km; "
+                    f"Última respuesta evaluable bien tolerada; referencia {reference_distance:.1f} {unit}; "
                     f"racha {memory.get('well_tolerated_streak', 0)}."
                 ),
-                "operation": f"Siguiente escalón completo {full_target:.1f} km; alternativa aplicada al {strength:.0%}.",
-                "limit": "Se progresa una sola variable: distancia. La carga semanal sigue limitada por Athlete State.",
+                "operation": f"Siguiente escalón completo {full_target:.1f} {unit}; alternativa aplicada al {strength:.0%}.",
+                "limit": f"Se progresa una sola variable: {'duración' if is_kayak else 'distancia'}. La carga semanal sigue limitada por Athlete State.",
                 "expected_effect": "Construir sobre una dosis demostrablemente tolerada, no sobre el rango del modelo.",
             })
-            evidence["result"] = f"Progresión {current:.1f} → {target:.1f} km"
+            evidence["result"] = f"Progresión {current:.1f} → {target:.1f} {unit}"
     elif action == "regress":
         target = min(current, max(reference_distance * .90, current * .90))
         if current - target >= minimum:
             before = _snapshot(session)
-            _scale_distance(session, target / current)
+            (_scale_kayak_duration if is_kayak else _scale_distance)(session, target / current)
             changes.append({
                 "change_id": f"memory_regress_{discipline}_{session['date']}",
                 "type": "scale_distance", "rule_id": "M1",
                 "title": f"Retroceder el estímulo de {discipline}",
                 "before": before, "after": _snapshot(session),
                 "signal": "La última sesión evaluable fue clasificada como no tolerada.",
-                "operation": "Reducir 10% la sesión comparable y reevaluar la respuesta.",
+                "operation": f"Reducir 10% la {'duración' if is_kayak else 'distancia'} comparable y reevaluar la respuesta.",
                 "limit": "No se añade intensidad ni se progresa otra variable de esta sesión.",
                 "expected_effect": "Volver a una dosis tolerable antes de intentar un nuevo escalón.",
             })
-            evidence["result"] = f"Retroceso {current:.1f} → {target:.1f} km"
+            evidence["result"] = f"Retroceso {current:.1f} → {target:.1f} {unit}"
     else:
         evidence["reason"] = (
             "La respuesta exige consolidar o aún no existe evidencia subjetiva suficiente."
@@ -554,10 +658,15 @@ def _apply_progression_memory(
             before = _snapshot(rest)
             created = _create_aerobic_session(rest, discipline, training)
             support_distance = max(minimum, round(reference_distance * .25, 1))
-            created["distance_km"] = support_distance
-            created["session_type"] = "Aeróbico de apoyo"
+            if is_kayak:
+                support_duration = max(minimum, round(reference_distance * .25))
+                _scale_kayak_duration(created, support_duration / _session_duration_minutes(created))
+            else:
+                created["distance_km"] = support_distance
+            created["session_type"] = None
             created["template"] = "Sesión añadida por progresión de frecuencia"
-            created["blocks"] = [{"type": "steady", "zone": "Z2", "distance_km": support_distance}]
+            if not is_kayak:
+                created["blocks"] = [{"type": "steady", "zone": "Z2", "distance_km": support_distance}]
             rest.clear(); rest.update(created)
             changes.append({
                 "change_id": f"memory_add_{discipline}_{rest['date']}",
@@ -646,7 +755,8 @@ def _select_historical_template(operation, discipline, session, availability):
     return evaluated[0], evaluated[:5]
 
 
-def _apply_recipe_to_week(sessions, signal, allow_intensity, availability, changes):
+def _apply_recipe_to_week(sessions, signal, allow_intensity, availability, changes,
+                          evaluation_opportunities):
     if not signal or not signal.get("discipline"):
         return False, "No existe una receta activa compatible con la semana.", None
     discipline, operation = signal["discipline"], signal["operation"]
@@ -658,19 +768,26 @@ def _apply_recipe_to_week(sessions, signal, allow_intensity, availability, chang
     before_session = max(candidates, key=lambda item: float(item.get("distance_km") or 0))
     before = _snapshot(before_session)
     if operation == "aerobic_efficiency":
-        before_session["zone"] = "Z2"
-        before_session["session_type"] = "Aeróbico continuo"
-        if discipline in {"Corrida", "Trail"}:
-            before_session["terrain"] = "Plano"
-        for block in before_session.get("blocks", []):
-            if block.get("type") != "rest": block["zone"] = "Z2"
+        # Speed@FC only needs a valid short stretch within the activity.  It
+        # must not redesign a mixed route merely to label the whole session as
+        # flat or Z2.
+        evaluation_opportunities.append({
+            "date": before_session.get("date"),
+            "discipline": discipline,
+            "metric_name": signal.get("metric_name") or "Speed@FC",
+            "goal": signal["goal"],
+            "instruction": (
+                "Mantén la sesión prevista. Si la ruta lo permite, incluye un tramo "
+                "continuo de al menos 3 minutos, cercano a plano, en Z2 y sin pausas "
+                "para obtener una observación comparable."
+            ),
+        })
+        return True, "Oportunidad de evaluación integrada sin cambiar la sesión.", None
     elif operation == "vertical":
         before_session["zone"] = before_session.get("zone") if before_session.get("zone") in {"Z2", "Z3"} else "Z3"
         before_session["terrain"] = "Montaña" if discipline == "Trail" else "Subida"
-        before_session["session_type"] = "Ascenso sostenido"
     elif operation == "kayak_endurance":
         before_session["zone"] = "Z2"
-        before_session["session_type"] = "Resistencia continua"
         for block in before_session.get("blocks", []):
             if block.get("type") != "rest": block["zone"] = "Z2"
     else:
@@ -683,7 +800,6 @@ def _apply_recipe_to_week(sessions, signal, allow_intensity, availability, chang
         label = selected_template["signature"]
         before_session.update({
             "structured": True,
-            "session_type": selected_template.get("objective_class") or signal["goal"],
             "zone": work_zone,
             "objective_class": selected_template.get("objective_class") or signal["goal_id"],
             "template_id": selected_template.get("template_id"),
@@ -746,8 +862,9 @@ def _week_distribution(sessions):
     return total, {key: 100 * value / total for key, value in by_sport.items()} if total else {}
 
 
-def _align_candidate_load(sessions, target_load, weights, recipe_signal, changes):
-    """Concentrate a meaningful load adjustment in one or two sessions."""
+def _align_candidate_load(sessions, target_load, weights, recipe_signal, changes, availability=None):
+    """Concentrate load in one or two sessions, preferring each free weekend session."""
+    availability = availability or {}
     adjustable, fixed = [], 0.0
     for session in sessions:
         if session.get("sport") == "Descanso":
@@ -756,7 +873,11 @@ def _align_candidate_load(sessions, target_load, weights, recipe_signal, changes
             load = _estimated_session_details(session)["total_load"]
         except (KeyError, TypeError, ValueError):
             continue
-        if not session.get("structured") and _number(session.get("distance_km")):
+        if (
+            not session.get("structured")
+            and not session.get("manual_protected")
+            and _number(session.get("distance_km"))
+        ):
             adjustable.append((session, load))
         else:
             fixed += load
@@ -768,6 +889,7 @@ def _align_candidate_load(sessions, target_load, weights, recipe_signal, changes
     recipe_discipline = (recipe_signal or {}).get("discipline")
     if delta >= 0:
         adjustable.sort(key=lambda item: (
+            item[0].get("weekday") in {"sáb", "sab", "sábado", "sat", "dom", "domingo", "sun"},
             item[0].get("sport") == recipe_discipline,
             float(weights.get(item[0].get("sport"), 0)),
             float(item[0].get("distance_km") or 0),
@@ -780,6 +902,8 @@ def _align_candidate_load(sessions, target_load, weights, recipe_signal, changes
         ))
 
     selected = adjustable[:2]
+    # The preference is per session, not a single weekend quota. A Saturday
+    # bike and a Sunday trail can both receive volume when both are eligible.
     first_session, first_load = selected[0]
     first_distance = float(first_session["distance_km"])
     first_load_per_km = first_load / first_distance
@@ -831,8 +955,8 @@ def _align_candidate_load(sessions, target_load, weights, recipe_signal, changes
 
 
 def _optimize_week(base_sessions, weights, availability, training, recipe_signal,
-                   capacity_mode, progression_memory, focus_discipline):
-    base_load = _estimated_week_load(base_sessions) or 0.0
+                   capacity_mode, progression_memory, focus_discipline, allow_specific_intensity=False, fixed_manual_load=0.0):
+    base_load = (_estimated_week_load(base_sessions) or 0.0) + fixed_manual_load
     chronic = training.get("chronic_load_42d_equivalent")
     focus_memory = (progression_memory or {}).get("disciplines", {}).get(focus_discipline, {})
     tolerated_streak = int(focus_memory.get("well_tolerated_streak", 0))
@@ -844,7 +968,7 @@ def _optimize_week(base_sessions, weights, availability, training, recipe_signal
     variants = [("Conservadora", .35), ("Equilibrada", .65), ("Directa", 1.0)]
     candidates = []
     for name, strength in variants:
-        sessions, changes = deepcopy(base_sessions), []
+        sessions, changes, evaluation_opportunities = deepcopy(base_sessions), [], []
         _ensure_recipe_discipline(
             sessions, recipe_signal, weights, availability, training, changes, strength
         )
@@ -854,10 +978,15 @@ def _optimize_week(base_sessions, weights, availability, training, recipe_signal
             availability, training, changes, strength,
         ) if focus_discipline else {"result": "Sin disciplina de foco"}
         recipe_applied, recipe_note, template_selection = _apply_recipe_to_week(
-            sessions, recipe_signal, capacity_mode == "build", availability, changes
+            sessions, recipe_signal, allow_specific_intensity, availability, changes,
+            evaluation_opportunities,
         )
-        _align_candidate_load(sessions, candidate_target, weights, recipe_signal, changes)
+        _align_candidate_load(
+            sessions, max(0.0, candidate_target - fixed_manual_load), weights,
+            recipe_signal, changes, availability,
+        )
         total, distribution = _week_distribution(sessions)
+        total += fixed_manual_load
         load_error = abs(total - candidate_target) / candidate_target * 100 if candidate_target else 0
         demanding_dates = sorted(item.get("date") for item in sessions if item.get("zone") in {"Z4", "Z5", "Z6"})
         consecutive = sum(
@@ -883,6 +1012,7 @@ def _optimize_week(base_sessions, weights, availability, training, recipe_signal
             "distribution": {key: round(value, 1) for key, value in distribution.items()},
             "recipe_applied": recipe_applied, "recipe_note": recipe_note,
             "template_selection": template_selection,
+            "evaluation_opportunities": evaluation_opportunities,
             "progression_memory": memory_evidence,
             "changes_count": len({
                 item.get("after", {}).get("date") for item in changes
@@ -920,6 +1050,29 @@ def _coalesce_optimizer_changes(base_sessions, adapted_sessions, changes):
     return result
 
 
+def _restore_manual_protected_sessions(base_sessions, sessions, changes):
+    """Keep explicitly protected manual sessions unchanged in the final proposal.
+
+    The adaptive rules are still evaluated so conflicts remain visible in their
+    audit trail, but a protected session is never silently transformed by an
+    optimizer, reduction or relocation.
+    """
+    protected = {
+        item.get("date"): deepcopy(item)
+        for item in base_sessions if item.get("manual_protected") and item.get("date")
+    }
+    if not protected:
+        return sessions, changes
+    by_date = {item.get("date"): item for item in sessions if item.get("date")}
+    restored = [deepcopy(protected.get(item.get("date"), by_date.get(item.get("date"), item))) for item in base_sessions]
+    filtered_changes = [
+        item for item in changes
+        if (item.get("before") or {}).get("date") not in protected
+        and (item.get("after") or {}).get("date") not in protected
+    ]
+    return restored, filtered_changes
+
+
 def _estimated_week_load(sessions):
     """Calculate comparable load in memory with the existing load engine."""
     config = load_config()
@@ -940,8 +1093,11 @@ def _estimated_session_details(session, config=None):
         return {"total_load": 0.0, "duration_minutes": 0.0}
     config = config or load_config()
     components, _ = plan_blocks_to_components(session.get("blocks") or [])
+    terrain = session.get("terrain")
+    if terrain is None and session.get("sport") == "Kayak":
+        terrain = config["calculation_rules"]["unstructured_session_default_terrain_by_sport"].get("Kayak")
     calculated = calculate_session_load(
-        sport=session.get("sport"), terrain=session.get("terrain"), components=components,
+        sport=session.get("sport"), terrain=terrain, components=components,
         structured=bool(session.get("structured")), config=config,
     )
     return {"total_load": calculated["total_load"],
@@ -1097,7 +1253,6 @@ def _redistribute_consecutive_intensity(
     def soften_z3(session):
         """Turn a simple Z3 session into an equivalent Z2 session."""
         session["zone"] = "Z2"
-        session["session_type"] = "Leve"
         for block in session.get("blocks", []):
             if block.get("zone") == "Z3":
                 block["zone"] = "Z2"
@@ -1169,6 +1324,13 @@ def _rule(rule_id, name, observed, threshold, triggered, consequence, evidence):
 
 
 def _relocate_unavailable(sessions, availability, changes):
+    def convert_to_rest(session):
+        session.update({
+            "sport": "Descanso", "session_type": None, "structured": False,
+            "objective_class": None, "template": None, "terrain": None,
+            "zone": None, "distance_km": None, "blocks": [{"type": "rest"}],
+        })
+
     unavailable, unresolved = [], []
     for index, session in enumerate(sessions):
         day = availability.get(session.get("date"), {"status": "free"})
@@ -1182,8 +1344,18 @@ def _relocate_unavailable(sessions, availability, changes):
             if target.get("sport") == "Descanso" and day.get("status") == "free":
                 candidates.append((abs(target_index - source_index), target_index))
         if not candidates:
-            unresolved.append({"date": source.get("date"), "sport": source.get("sport"),
-                               "reason": "No existe un día de descanso libre al cual moverla."})
+            before = _snapshot(source)
+            convert_to_rest(source)
+            changes.append({
+                "change_id": f"availability_rest_{before['date']}",
+                "type": "replace_session", "rule_id": "A1",
+                "title": f"Convertir la sesión del {before['date']} en descanso",
+                "before": before, "after": _snapshot(source),
+                "signal": f"El {before['date']} está marcado como no disponible (0 minutos) y no existe un día libre para reubicar la sesión.",
+                "operation": "Retirar la sesión del día bloqueado; no se compensa su carga en otro día.",
+                "limit": "La disponibilidad de 0 minutos es una restricción obligatoria.",
+                "expected_effect": "Respetar el día no disponible y evitar concentrar carga para recuperar la sesión.",
+            })
             continue
         target = sessions[min(candidates)[1]]
         before = _snapshot(source)
@@ -1218,7 +1390,7 @@ def _apply_reduction(sessions, easy_factor, hard_factor, rule_id, reason, change
             "change_id": f"{rule_id}_{session.get('date')}", "type": "scale_distance", "rule_id": rule_id,
             "title": f"Reducir {percentage}% la distancia del {session.get('date')}", "before": before, "after": after,
             "signal": reason, "operation": f"Distancia adaptada = distancia base × {factor:.2f}.",
-            "limit": "Se conserva la disciplina, el tipo de sesión, la zona y el terreno.",
+            "limit": "Se conserva la disciplina, la zona y el terreno.",
             "expected_effect": "Reducir la demanda semanal sin eliminar por completo el estímulo planificado.",
         })
 
@@ -1313,7 +1485,7 @@ def _apply_concentrated_overload_reduction(
                 f"semanal objetivo de {100 * target_week_fraction:.1f}%."
             ),
             "limit": (
-                "Máximo dos sesiones; se conserva disciplina, tipo, zona y terreno. "
+                "Máximo dos sesiones; se conserva disciplina, zona y terreno. "
                 "Ninguna sesión se reduce más de 35%."
             ),
             "expected_effect": (
@@ -1335,15 +1507,31 @@ def build_adaptive_proposal(prediction, athlete_state, goal_names=None, metric_c
     interpretation = athlete_state.get("interpretation", {})
     training, context = athlete_state.get("training", {}), athlete_state.get("context", {})
     base_sessions = deepcopy(prediction.get("sessions", []))
+    fixed_manual_load_value = prediction.get("fixed_manual_load")
+    # ``_number`` is a validator, not a converter.  Keep the actual completed
+    # and protected-session load instead of accidentally passing True (= 1).
+    fixed_manual_load = float(fixed_manual_load_value) if _number(fixed_manual_load_value) else 0.0
     sessions, changes, rules = deepcopy(base_sessions), [], []
     availability = {item["date"]: item for item in context.get("availability_next_14d", [])}
     (
         priorities, assigned_ids, primary_ids, primary_disciplines,
-        discipline_weights,
+        discipline_weights, metric_rules,
     ) = _priorities_and_metrics(context, goal_names, metric_catalog)
-    freshness = [item for item in athlete_state.get("measurement_freshness", [])
-                 if not assigned_ids or item.get("metric_id") in assigned_ids]
-    evaluations = [item for item in freshness if item.get("status") in
+    metric_by_id = {item.get("id"): item for item in metric_catalog}
+    freshness = _filter_measurements_for_rules(
+        athlete_state.get("measurement_freshness", []), metric_rules, metric_by_id
+    ) if assigned_ids else list(athlete_state.get("measurement_freshness", []))
+    # Supporting objectives can be displayed and used in their own recipe,
+    # but they cannot determine the discipline focus while Primary or
+    # Secondary assignments exist in the active window.
+    focus_rules = [
+        rule for rule in metric_rules
+        if rule.get("priority") in {"Primary", "Secondary"}
+    ]
+    focus_freshness = _filter_measurements_for_rules(
+        athlete_state.get("measurement_freshness", []), focus_rules, metric_by_id
+    ) if focus_rules else freshness
+    evaluations = [item for item in focus_freshness if item.get("status") in
                    {"Sin medición", "Próxima a vencer", "Evaluación pendiente", "Desactualizada"}]
     score = interpretation.get("readiness_score")
     confidence = interpretation.get("confidence", "baja")
@@ -1363,7 +1551,7 @@ def build_adaptive_proposal(prediction, athlete_state, goal_names=None, metric_c
     unavailable, unresolved = _relocate_unavailable(sessions, availability, changes)
     rules.append(_rule("A1", "Disponibilidad obligatoria", f"{len(unavailable)} sesión(es) en días con 0 minutos",
                        "Ninguna sesión puede quedar en un día no disponible", bool(unavailable),
-                       "Reubicar en el descanso libre más cercano" if unavailable else "Sin cambios",
+                       "Reubicar en el descanso libre más cercano o convertir en descanso" if unavailable else "Sin cambios",
                        "Disponibilidad calendarizada y fechas de la semana base"))
     time_violations, time_unresolved = _apply_time_limits(sessions, availability, changes)
     unresolved.extend(time_unresolved)
@@ -1422,17 +1610,23 @@ def build_adaptive_proposal(prediction, athlete_state, goal_names=None, metric_c
     relative = balance / chronic if _number(balance) and _number(chronic) and chronic > 0 else None
     low_recovery = bool(_number(score) and score < 40 and CONFIDENCE_RANK.get(confidence, 0) >= 1)
     overloaded = bool(_number(relative) and relative <= -0.25)
+    focus_memory = (
+        athlete_state.get("progression_memory", {}).get("disciplines", {})
+        .get(discipline_focus.get("discipline"), {})
+    )
+    well_tolerated_progression = focus_memory.get("action") == "progress"
     progression = bool(
         _number(score) and score >= 55
         and CONFIDENCE_RANK.get(confidence, 0) >= 1
-        and _number(relative) and relative >= 0.20
+        and _number(relative) and relative >= -0.10
         and not discomfort
+        and well_tolerated_progression
     )
     primary_progress = [item for item in athlete_state.get("progress", {}).values()
                         if item.get("metric_id") in primary_ids]
     stalled_primary = any(
-        _number(item.get("trend_per_30d")) and item["trend_per_30d"] <= 0
-        and item.get("confidence") in {"media", "alta"}
+        _number(item.get("decision_trend_per_30d")) and item["decision_trend_per_30d"] <= 0
+        and item.get("decision_confidence") in {"media", "alta"}
         for item in primary_progress
     )
     recipe_signals = _active_recipe_signals(
@@ -1452,8 +1646,8 @@ def build_adaptive_proposal(prediction, athlete_state, goal_names=None, metric_c
               "Sueño, VFC, FC reposo, fatiga, molestias y carga"),
         _rule("L1", "Sobrecarga aguda", f"Balance relativo {relative_text}", "(crónica − aguda) / crónica ≤ −25%",
               overloaded, "Concentrar una reducción proporcional al exceso en un máximo de dos sesiones", "Carga aguda de 7 días frente a carga crónica equivalente"),
-        _rule("P1", "Progresión aeróbica dirigida", f"Preparación {score:.1f}/100; balance relativo {relative_text}; foco {discipline_focus.get('discipline') or 'sin candidata'}" if _number(score) else f"Preparación sin puntaje; balance relativo {relative_text}",
-              "Preparación ≥55, confianza media/alta, carga aguda ≥20% bajo la habitual y sin molestia",
+        _rule("P1", "Progresión aeróbica dirigida", f"Preparación {score:.1f}/100; balance relativo {relative_text}; foco {discipline_focus.get('discipline') or 'sin candidata'}; respuesta {focus_memory.get('action', 'sin evidencia')}" if _number(score) else f"Preparación sin puntaje; balance relativo {relative_text}",
+              "Preparación ≥55, confianza media/alta, carga aguda no más de 10% sobre la habitual, sin molestia y respuesta comparable bien tolerada",
               progression, "Progresar una sesión de la disciplina seleccionada desde la referencia realizada",
               "Preparación, balance de carga, molestias y exposición reciente; rutas/segmentos orientan el estímulo, no limitan la carga"),
         _rule("O1", "Optimización semanal por objetivos",
@@ -1503,6 +1697,11 @@ def build_adaptive_proposal(prediction, athlete_state, goal_names=None, metric_c
         )
     else:
         capacity_mode = "build" if progression else "maintain"
+        allow_specific_intensity = bool(
+            selected_recipe
+            and selected_recipe.get("operation") in {"threshold", "max_aerobic"}
+            and not discomfort and not low_recovery and not overloaded
+        )
         optimizer_candidates, selected = _optimize_week(
             sessions,
             discipline_weights,
@@ -1512,10 +1711,13 @@ def build_adaptive_proposal(prediction, athlete_state, goal_names=None, metric_c
             capacity_mode,
             athlete_state.get("progression_memory", {}),
             discipline_focus.get("discipline"),
+            allow_specific_intensity,
+            fixed_manual_load,
         )
         optimization_candidates = optimizer_candidates
         sessions = selected["sessions"]
         changes.extend(selected["changes"])
+        evaluation_opportunities = selected.get("evaluation_opportunities", [])
         memory_result = selected.get("progression_memory", {})
         memory_triggered = memory_result.get("result", "").startswith(("Progresión", "Retroceso"))
         rules.append(_rule(
@@ -1544,6 +1746,7 @@ def build_adaptive_proposal(prediction, athlete_state, goal_names=None, metric_c
             f"{selected['recipe_note']}"
         )
 
+    sessions, changes = _restore_manual_protected_sessions(base_sessions, sessions, changes)
     if optimization_candidates:
         changes = _coalesce_optimizer_changes(base_sessions, sessions, changes)
 
@@ -1558,7 +1761,7 @@ def build_adaptive_proposal(prediction, athlete_state, goal_names=None, metric_c
                 session["estimated_load"] = None
 
     return {
-        "mode": "adaptive_v15", "engine_version": "adaptive_engine_v15", "decision": decision,
+        "mode": "adaptive_v23", "engine_version": "adaptive_engine_v23", "decision": decision,
         "recommended_action": action, "confidence": confidence,
         "positive_factors": interpretation.get("positive_factors", []),
         "limiting_factors": interpretation.get("limiting_factors", []),
@@ -1572,6 +1775,7 @@ def build_adaptive_proposal(prediction, athlete_state, goal_names=None, metric_c
         "recipe_signals": recipe_signals,
         "selected_recipe": selected_recipe,
         "progression_result": progression_result,
+        "evaluation_opportunities": evaluation_opportunities if optimization_candidates else [],
         "evaluations_due": evaluations,
         "base_sessions": base_sessions, "adapted_sessions": sessions, "changes": changes,
         "optimization_candidates": [{key: value for key, value in item.items() if key not in {"sessions", "changes"}}

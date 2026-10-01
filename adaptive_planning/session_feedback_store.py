@@ -16,6 +16,17 @@ TEMPERATURE_OPTIONS = {
 TERRAIN_CONDITION_OPTIONS = {"normal", "muddy", "snowy"}
 
 
+def planned_session_reference(plan_id, session, fallback_index=0):
+    """Stable session identity; dates alone are ambiguous for double sessions."""
+    session_id = session.get("session_id") or session.get("id")
+    if session_id:
+        return f"{plan_id}::{session_id}"
+    return "::".join([
+        str(plan_id), str(session.get("date") or ""), str(session.get("sport") or ""),
+        str(session.get("zone") or ""), str(session.get("distance_km") or ""), str(fallback_index),
+    ])
+
+
 def _now():
     return datetime.now().astimezone().isoformat(timespec="seconds")
 

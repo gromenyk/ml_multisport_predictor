@@ -16,9 +16,12 @@ from ui_pages import (
     athlete_state,
     calendar_page,
     data_ingestion,
+    nutrition_planning,
     objectives,
     planning,
+    physiological_analysis,
     segments,
+    statistics_page,
     training_load,
 )
 
@@ -264,6 +267,8 @@ with st.sidebar:
     st.divider()
     pages = (
         "Ingestión de datos",
+        "Planificación nutricional",
+        "Estadísticas",
         "Entrenamiento del modelo",
         "Planificación",
         "Calendario",
@@ -271,6 +276,7 @@ with st.sidebar:
         "Estado del atleta",
         "Objetivos",
         "Segmentos",
+        "Análisis fisiológico",
     )
     legacy_pages = {
         "Data ingestion": "Ingestión de datos", "Model training": "Ingestión de datos",
@@ -303,6 +309,15 @@ if selected_page == "Ingestión de datos":
 elif selected_page == "Planificación":
     st.caption("Genera la semana base y transfórmala en el plan definitivo mediante la adaptación contextual.")
     planning.render()
+elif selected_page == "Planificación nutricional":
+    st.caption("Define los alimentos y, posteriormente, genera estrategias nutricionales para cada sesión.")
+    nutrition_planning.render()
+elif selected_page == "Estadísticas":
+    st.caption("Consulta el resumen histórico y comparativo de todas las actividades procesadas.")
+    statistics_page.render()
+elif selected_page == "Análisis fisiológico":
+    st.caption("Interpreta la preparación y los entrenamientos desde un marco fisiológico individual.")
+    physiological_analysis.render()
 elif selected_page == "Calendario":
     st.caption("Revisa ciclos, sesiones previstas, actividades realizadas y carga diaria.")
     calendar_page.render()

@@ -16,7 +16,13 @@ from adaptive_planning.session_feedback_store import (
     TERRAIN_CONDITION_OPTIONS,
     delete_session_feedback,
     load_session_feedback,
+    planned_session_reference,
     save_session_feedback,
+)
+from adaptive_planning.planned_session_status_store import (
+    delete_missed_session,
+    load_missed_sessions,
+    save_missed_session,
 )
 from adaptive_planning.workflow_store import load_active_plans
 from backend.wellness_store import (
@@ -546,11 +552,11 @@ def _context_form():
         "No disponible equivale a 0 minutos. También puedes fijar un máximo diario."
     )
     today = date.today()
-    next_monday = today + timedelta(days=(7 - today.weekday()) % 7 or 7)
+    current_monday = today - timedelta(days=today.weekday())
     selected_date = st.date_input(
-        "Semana a planificar",
-        value=next_monday,
-        min_value=next_monday,
+        "Semana a configurar",
+        value=current_monday,
+        min_value=current_monday,
         key="availability_week",
     )
     week_start = selected_date - timedelta(days=selected_date.weekday())
@@ -1108,18 +1114,38 @@ def _progress_tab(state):
         columns[0].metric("Último valor", _fmt(metric["latest"], 2, f" {metric['unit']}"))
         columns[1].metric("Actividades medidas", metric.get("activity_summaries", metric["observations"]))
         columns[2].metric("Días desde medición", metric["days_since_measurement"])
-        columns[3].metric("Confianza", metric["confidence"].capitalize())
-        if metric["confidence"] == "baja":
-            st.warning("La tendencia es exploratoria: hay pocas observaciones válidas.")
+        columns[3].metric(
+            "Evidencia para planificar",
+            metric.get("decision_confidence", "insuficiente").capitalize(),
+        )
+        if metric.get("decision_confidence") == "insuficiente":
+            st.info(
+                "Aún no hay cuatro actividades comparables recientes. La métrica se muestra, "
+                "pero no activa por sí sola ajustes adaptativos."
+            )
         frame = pd.DataFrame(metric["observations_data"])
         frame["date"] = pd.to_datetime(frame["date"])
         st.line_chart(frame.set_index("date")[["value"]])
         st.caption(
             f"Cada punto es la mediana de una actividad. Segmentos individuales conservados: {metric['observations']}."
         )
+        trend_columns = st.columns(2)
+        trend_columns[0].metric(
+            "Tendencia para planificar",
+            _fmt(metric.get("decision_trend_per_30d"), 2, f" {metric['unit']} cada 30 días"),
+            help=(
+                "Usa al menos cuatro actividades comparables de los últimos 90 días. "
+                "Si no alcanza, intenta usar la ventana activa; de lo contrario no ajusta el plan."
+            ),
+        )
+        trend_columns[1].metric(
+            "Tendencia histórica",
+            _fmt(metric.get("historical_trend_per_30d"), 2, f" {metric['unit']} cada 30 días"),
+            help="Usa todo el histórico como referencia; no es el gatillo principal de ajuste.",
+        )
         st.caption(
-            "Tendencia lineal estimada: "
-            + _fmt(metric["trend_per_30d"], 2, f" {metric['unit']} cada 30 días")
+            f"Base de decisión: {metric.get('decision_trend_source', 'evidencia reciente insuficiente')} "
+            f"({metric.get('decision_activity_summaries', 0)} actividades comparables)."
         )
 
 
@@ -1138,16 +1164,201 @@ def _sources_tab(state):
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
+def _planned_session_payload(plan, session, reference_key):
+    return {
+        "reference_key": reference_key,
+        "plan_id": plan["id"], "plan_version": plan.get("version"),
+        "week_start": plan.get("week_start"), "date": session.get("date"),
+        "session_id": session.get("session_id"), "sport": session.get("sport"),
+        "zone": session.get("zone"), "terrain": session.get("terrain"),
+        "distance_km": session.get("distance_km"), "template": session.get("template"),
+        "estimated_load": session.get("estimated_load"),
+    }
+
+
+def _repair_ambiguous_legacy_feedback(sessions):
+    """Repair only old date-only links that are demonstrably ambiguous.
+
+    Earlier versions used ``plan_id::date`` as the reference.  That fails when
+    two sessions share a date.  A repair is safe only when the performed FIT
+    clearly matches one of those sessions by sport and distance.
+    """
+    performed = {item.get("activity_id"): item for item in sessions}
+    plans = {item.get("id"): item for item in load_active_plans()}
+    repaired = 0
+    for record in load_session_feedback():
+        planned = record.get("planned_session") or {}
+        reference = str(planned.get("reference_key") or "")
+        if reference.count("::") != 1:
+            continue
+        plan_id, legacy_date = reference.split("::", 1)
+        plan, activity = plans.get(plan_id), performed.get(record.get("activity_id"))
+        if not plan or not activity or activity.get("date") != legacy_date:
+            continue
+        candidates = [
+            session for session in plan.get("sessions", [])
+            if session.get("date") == legacy_date and session.get("sport") == planned.get("sport")
+        ]
+        if not candidates:
+            continue
+        if len(candidates) == 1:
+            closest = candidates[0]
+        else:
+            if activity.get("distance_km") is None:
+                continue
+            candidates.sort(key=lambda session: abs(float(session.get("distance_km") or 0) - float(activity["distance_km"])))
+            closest, next_closest = candidates[0], candidates[1]
+            closest_gap = abs(float(closest.get("distance_km") or 0) - float(activity["distance_km"]))
+            next_gap = abs(float(next_closest.get("distance_km") or 0) - float(activity["distance_km"]))
+            if next_gap - closest_gap < 0.5:
+                continue
+        reference_key = planned_session_reference(plan_id, closest)
+        corrected = _planned_session_payload(plan, closest, reference_key)
+        try:
+            save_session_feedback({
+                "activity_id": record["activity_id"], "date": record["date"],
+                "match_type": "planned", "planned_session": corrected,
+                "completion_percent": record.get("completion_percent") or 100,
+                "rpe": record.get("rpe", 5),
+                "finish_feeling": record.get("finish_feeling", "controlled"),
+                "energy_response": record.get("energy_response", "stable"),
+                "discomfort": record.get("discomfort", "none"),
+                "temperature": record.get("temperature", "pleasant"),
+                "terrain_condition": record.get("terrain_condition", "normal"),
+                "notes": record.get("notes", ""),
+            })
+        except ValueError:
+            continue
+        repaired += 1
+    return repaired
+
+
+MISSED_SESSION_REASON_LABELS = {
+    "illness": "Enfermedad o resfrío",
+    "time_constraint": "Falta de tiempo",
+    "fatigue_recovery": "Fatiga o necesidad de recuperación",
+    "personal_decision": "Cambio o decisión personal",
+    "other": "Otro motivo",
+}
+
+
+def _planned_session_label(item):
+    return (
+        f"{item.get('date')} · {display_es(item.get('sport')) or '—'} · "
+        f"{item.get('zone') or '—'} · "
+        f"{item.get('distance_km') if item.get('distance_km') is not None else '—'} km"
+    )
+
+
+def render_missed_planned_sessions(as_of, widget_prefix=""):
+    """Allow a past plan session to be marked without requiring a FIT file."""
+    as_of_date = date.fromisoformat(str(as_of)) if not isinstance(as_of, date) else as_of
+    earliest = as_of_date - timedelta(days=21)
+    completed_references = {
+        (item.get("planned_session") or {}).get("reference_key")
+        for item in load_session_feedback()
+        if (item.get("planned_session") or {}).get("reference_key")
+    }
+    missed_by_reference = {
+        item.get("reference_key"): item for item in load_missed_sessions()
+        if item.get("reference_key")
+    }
+    candidates = {}
+    for plan in load_active_plans():
+        for session_index, session in enumerate(plan.get("sessions", [])):
+            if session.get("sport") == "Descanso" or not session.get("date"):
+                continue
+            try:
+                session_date = date.fromisoformat(session["date"])
+            except ValueError:
+                continue
+            if not earliest <= session_date <= as_of_date:
+                continue
+            reference_key = planned_session_reference(plan["id"], session, session_index)
+            if reference_key in completed_references:
+                continue
+            candidates[reference_key] = _planned_session_payload(plan, session, reference_key)
+
+    st.markdown("#### Sesiones planificadas no realizadas")
+    st.caption(
+        "Registra una sesión omitida aunque no exista FIT. No afecta tus métricas de rendimiento "
+        "ni se interpreta como una sesión mal tolerada."
+    )
+    pending = {
+        key: value for key, value in candidates.items()
+        if key not in missed_by_reference
+    }
+    if pending:
+        ordered = sorted(pending, key=lambda key: pending[key].get("date", ""), reverse=True)
+        with st.form(f"{widget_prefix}missed_planned_session_form"):
+            selected_key = st.selectbox(
+                "Sesión que no realizaste",
+                ordered,
+                format_func=lambda key: _planned_session_label(pending[key]),
+            )
+            reason_keys = list(MISSED_SESSION_REASON_LABELS)
+            reason = st.selectbox(
+                "Motivo",
+                reason_keys,
+                format_func=MISSED_SESSION_REASON_LABELS.get,
+            )
+            notes = st.text_area(
+                "Nota opcional",
+                placeholder="Por ejemplo: resfrío desde el lunes; reposo y sin fiebre.",
+            )
+            submitted = st.form_submit_button("Marcar como no realizada", use_container_width=True)
+        if submitted:
+            try:
+                save_missed_session(pending[selected_key], reason, notes)
+            except ValueError as error:
+                st.error(str(error))
+            else:
+                st.success("Sesión marcada como no realizada.")
+                _rerun()
+    elif not candidates:
+        st.info("No hay sesiones planificadas de los últimos 21 días disponibles para marcar.")
+    else:
+        st.info("Todas las sesiones planificadas de este período ya están realizadas o marcadas como omitidas.")
+
+    recent_missed = [
+        item for item in missed_by_reference.values()
+        if earliest <= date.fromisoformat(item["date"]) <= as_of_date
+    ]
+    if recent_missed:
+        st.dataframe(pd.DataFrame([{
+            "Fecha": item.get("date"),
+            "Sesión": _planned_session_label(item.get("planned_session") or {}),
+            "Estado": "No realizada",
+            "Motivo": MISSED_SESSION_REASON_LABELS.get(item.get("reason"), item.get("reason")),
+            "Nota": item.get("notes") or "—",
+        } for item in recent_missed]), use_container_width=True, hide_index=True)
+        deletion_key = st.selectbox(
+            "Corregir un registro de sesión omitida",
+            [item["reference_key"] for item in recent_missed],
+            format_func=lambda key: _planned_session_label(
+                missed_by_reference[key].get("planned_session") or {}
+            ),
+            key=f"{widget_prefix}missed_planned_session_delete",
+        )
+        if st.button("Quitar marca de no realizada", key=f"{widget_prefix}delete_missed_planned_session"):
+            delete_missed_session(deletion_key)
+            _rerun()
+
+
 def render_session_feedback(state, show_memory=True, prefer_pending=False, widget_prefix=""):
     st.markdown("### Respuesta a cada entrenamiento")
     st.caption(
         "La actividad objetiva proviene del FIT. Tu evaluación permite decidir si el "
         "siguiente estímulo debe progresar, consolidarse o retroceder."
     )
+    render_missed_planned_sessions(state.get("as_of_date", date.today()), widget_prefix)
     sessions = state.get("progression_memory", {}).get("recent_sessions", [])
     if not sessions:
         st.info("No existen actividades FIT procesadas hasta la fecha seleccionada.")
         return
+    repaired = _repair_ambiguous_legacy_feedback(sessions)
+    if repaired:
+        st.info(f"Se corrigió {repaired} asociación antigua de una doble sesión del mismo día.")
     stored = {item["activity_id"]: item for item in load_session_feedback()}
     if prefer_pending:
         pending_sessions = sorted(
@@ -1214,24 +1425,16 @@ def render_session_feedback(state, show_memory=True, prefer_pending=False, widge
     performed_date = date.fromisoformat(selected["date"])
     planned_options = {}
     for plan in load_active_plans():
-        for session in plan.get("sessions", []):
+        for session_index, session in enumerate(plan.get("sessions", [])):
             if session.get("sport") == "Descanso" or not session.get("date"):
                 continue
             distance_days = abs((date.fromisoformat(session["date"]) - performed_date).days)
             if distance_days > 10:
                 continue
-            reference_key = f"{plan['id']}::{session['date']}"
+            reference_key = planned_session_reference(plan["id"], session, session_index)
             if reference_key in used_references:
                 continue
-            planned_options[reference_key] = {
-                "reference_key": reference_key,
-                "plan_id": plan["id"], "plan_version": plan.get("version"),
-                "week_start": plan.get("week_start"), "date": session["date"],
-                "sport": session.get("sport"), "session_type": session.get("session_type"),
-                "zone": session.get("zone"), "terrain": session.get("terrain"),
-                "distance_km": session.get("distance_km"), "template": session.get("template"),
-                "estimated_load": session.get("estimated_load"),
-            }
+            planned_options[reference_key] = _planned_session_payload(plan, session, reference_key)
     existing_planned = existing.get("planned_session")
     if existing_planned:
         planned_options.setdefault(existing_planned["reference_key"], existing_planned)
@@ -1285,7 +1488,7 @@ def render_session_feedback(state, show_memory=True, prefer_pending=False, widge
         item = planned_options[option.split("planned::", 1)[1]]
         return (
             f"Plan {item['date']} · {display_es(item.get('sport')) or '—'} · "
-            f"{display_es(item.get('session_type')) or '—'} · {item.get('zone') or '—'} · "
+            f"{item.get('zone') or '—'} · "
             f"{item.get('distance_km') if item.get('distance_km') is not None else '—'} km"
         )
 

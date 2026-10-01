@@ -36,6 +36,9 @@ garmin/activities/
 data/athlete_state/
 data/planned_history/
 
+# Personal nutrition catalog, portions and generated meal plans
+data/nutrition/
+
 # Personal route geometry, segments and attempts
 data/segments/*
 !data/segments/.gitkeep
@@ -63,6 +66,8 @@ experiments/**/output/*
 # Temporary, editor and OS files
 *.tmp
 *.log
+*.bak
+.streamlit/.cache/
 .vscode/
 .idea/
 .DS_Store

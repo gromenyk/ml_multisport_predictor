@@ -9,9 +9,7 @@ from pathlib import Path
 
 import altair as alt
 import folium
-from branca.element import MacroElement, Template
 import pandas as pd
-import pydeck as pdk
 import streamlit as st
 from streamlit_folium import st_folium
 
@@ -244,35 +242,17 @@ def _stored_frame(segment: dict) -> pd.DataFrame:
     return frame
 
 
-class _DragNotifier(MacroElement):
-    """Forward a drag as a click on that marker, preserving its identity."""
-
-    _template = Template(
-        """
-        {% macro script(this, kwargs) %}
-        var marker = {{ this._parent.get_name() }};
-        marker.on('dragend', function(event) {
-            var position = event.target.getLatLng();
-            marker.fire('click', {latlng: position});
-        });
-        {% endmacro %}
-        """
-    )
-
-
 def _render_map(
     frame: pd.DataFrame,
     segment: pd.DataFrame,
     map_key: str,
+    layer_name: str,
 ):
     route = _downsample(frame, 3000)
     selected = _downsample(segment, 1500)
     center = selected.iloc[len(selected) // 2]
-    map_view = folium.Map(
-        location=[float(center["latitude"]), float(center["longitude"])],
-        zoom_start=12,
-        tiles="CartoDB positron",
-        control_scale=True,
+    map_view = _base_map(
+        [float(center["latitude"]), float(center["longitude"])], layer_name
     )
     folium.PolyLine(
         route[["latitude", "longitude"]].values.tolist(),
@@ -287,13 +267,11 @@ def _render_map(
         (selected.iloc[-1], "Final", "#FF6B4A"),
     )
     for point, label, color in endpoints:
-        marker = folium.Marker(
+        folium.Marker(
             [float(point["latitude"]), float(point["longitude"])],
-            tooltip=f"{label} · arrastra para ajustar",
-            draggable=True,
+            tooltip=label,
             icon=folium.Icon(color="blue" if label == "Inicio" else "red", icon="flag"),
         ).add_to(map_view)
-        _DragNotifier().add_to(marker)
         folium.CircleMarker(
             [float(point["latitude"]), float(point["longitude"])],
             radius=7, color=color, fill=True, fill_color=color, fill_opacity=0.9,
@@ -304,11 +282,7 @@ def _render_map(
         key=map_key,
         height=500,
         use_container_width=True,
-        returned_objects=[
-            "last_clicked",
-            "last_object_clicked",
-            "last_object_clicked_tooltip",
-        ],
+        returned_objects=["last_clicked"],
     )
 
 
@@ -382,37 +356,23 @@ def _rerun():
         st.experimental_rerun()
 
 
-def _render_stored_map(frame: pd.DataFrame) -> None:
-    route = frame[["longitude", "latitude"]].rename(
-        columns={"longitude": "lon", "latitude": "lat"}
+def _render_stored_map(frame: pd.DataFrame, map_key: str) -> None:
+    center = frame.iloc[len(frame) // 2]
+    layer_name = _map_layer_selector(f"{map_key}_layer")
+    map_view = _base_map(
+        [float(center["latitude"]), float(center["longitude"])], layer_name
     )
-    center = route.iloc[len(route) // 2]
-    st.pydeck_chart(
-        pdk.Deck(
-            layers=[
-                pdk.Layer(
-                    "PathLayer", data=[{"path": route[["lon", "lat"]].values.tolist()}],
-                    get_path="path", get_color=[18, 103, 229, 255], get_width=8,
-                    width_min_pixels=4,
-                ),
-                pdk.Layer(
-                    "ScatterplotLayer",
-                    data=[
-                        {"lon": route.iloc[0]["lon"], "lat": route.iloc[0]["lat"], "color": [18, 166, 184]},
-                        {"lon": route.iloc[-1]["lon"], "lat": route.iloc[-1]["lat"], "color": [255, 107, 74]},
-                    ],
-                    get_position="[lon, lat]", get_fill_color="color", get_radius=55,
-                    radius_min_pixels=6,
-                ),
-            ],
-            initial_view_state=pdk.ViewState(
-                latitude=float(center["lat"]), longitude=float(center["lon"]), zoom=12,
-            ),
-            map_style="light",
-        ),
-        use_container_width=True,
-        height=430,
-    )
+    coordinates = frame[["latitude", "longitude"]].values.tolist()
+    folium.PolyLine(coordinates, color="#1267E5", weight=6, opacity=.92).add_to(map_view)
+    for point, color, label in (
+        (frame.iloc[0], "#12A6B8", "Inicio"),
+        (frame.iloc[-1], "#FF6B4A", "Final"),
+    ):
+        folium.CircleMarker(
+            [float(point["latitude"]), float(point["longitude"])], radius=7,
+            color=color, fill=True, fill_color=color, fill_opacity=.95, tooltip=label,
+        ).add_to(map_view)
+    st_folium(map_view, key=map_key, height=430, use_container_width=True, returned_objects=[])
 
 
 def _render_stored_profile(frame: pd.DataFrame) -> None:
@@ -538,7 +498,7 @@ def _render_catalog() -> None:
     else:
         map_tab, profile_tab = st.tabs(["Mapa del segmento", "Perfil altimétrico"])
         with map_tab:
-            _render_stored_map(frame)
+            _render_stored_map(frame, f"stored_segment_map_{selected_id}")
         with profile_tab:
             _render_stored_profile(frame)
     metrics = selected.get("metrics", {})
@@ -821,7 +781,7 @@ def _render_routes() -> None:
     frame = _stored_frame(selected)
     map_tab, profile_tab = st.tabs(["Mapa de la ruta", "Perfil altimétrico"])
     with map_tab:
-        _render_stored_map(frame) if not frame.empty else st.warning("La ruta no contiene geometría utilizable.")
+        _render_stored_map(frame, f"stored_route_map_{selected_id}") if not frame.empty else st.warning("La ruta no contiene geometría utilizable.")
     with profile_tab:
         if not frame.empty and frame["altitude_meters"].notna().any():
             _render_stored_profile(frame)
@@ -1102,59 +1062,36 @@ def _render_explorer():
         horizontal=True,
         key=f"segment_endpoint_{selected_name}",
         help=(
-            "Selecciona Inicio o Final y luego arrastra su marcador, o haz clic "
-            "directamente sobre la ruta. La posición se ajustará al punto GPS más cercano."
+            "Selecciona Inicio o Final y luego haz clic sobre el punto deseado de la ruta. "
+            "La posición se ajustará al punto GPS más cercano."
         ),
     )
+    layer_name = _map_layer_selector(f"segment_map_layer_{selected_name}")
     map_state = _render_map(
         frame,
         segment,
         map_key=f"segment_map_{selected_name}",
+        layer_name=layer_name,
     )
     st.caption(
-        "Marcador azul: inicio · marcador rojo: final · puedes arrastrarlos. "
-        "También puedes seleccionar Inicio/Final y hacer clic sobre la ruta."
+        "Marcador azul: inicio · marcador rojo: final. Selecciona el extremo que "
+        "quieres cambiar y haz clic sobre la ruta."
     )
     map_state = map_state or {}
-    marker_clicked = map_state.get("last_object_clicked")
-    marker_tooltip = str(map_state.get("last_object_clicked_tooltip") or "")
-    dragged_endpoint = None
-    if marker_tooltip.startswith("Inicio"):
-        dragged_endpoint = "Inicio"
-    elif marker_tooltip.startswith("Final"):
-        dragged_endpoint = "Final"
     map_clicked = map_state.get("last_clicked")
-    clicked, effective_endpoint = None, None
-    marker_processed_key = f"processed_marker_drag_{selected_name}"
     map_processed_key = f"processed_map_click_{selected_name}"
-    marker_signature = None
-    if (
-        dragged_endpoint
-        and isinstance(marker_clicked, dict)
-        and {"lat", "lng"}.issubset(marker_clicked)
-    ):
-        marker_signature = (
-            dragged_endpoint,
-            round(float(marker_clicked["lat"]), 7),
-            round(float(marker_clicked["lng"]), 7),
-        )
     map_signature = None
     if isinstance(map_clicked, dict) and {"lat", "lng"}.issubset(map_clicked):
         map_signature = (
-            endpoint_to_adjust,
             round(float(map_clicked["lat"]), 7),
             round(float(map_clicked["lng"]), 7),
         )
-    if marker_signature and st.session_state.get(marker_processed_key) != marker_signature:
-        clicked, effective_endpoint = marker_clicked, dragged_endpoint
-        st.session_state[marker_processed_key] = marker_signature
-        # Leaflet may bubble the marker event to the map. Mark the matching map
-        # event as consumed so one drag cannot move both endpoints on rerun.
-        if map_signature and marker_signature[1:] == map_signature[1:]:
-            st.session_state[map_processed_key] = map_signature
-    elif map_signature and st.session_state.get(map_processed_key) != map_signature:
-        clicked, effective_endpoint = map_clicked, endpoint_to_adjust
+    if map_signature and st.session_state.get(map_processed_key) != map_signature:
+        clicked = map_clicked
+        effective_endpoint = endpoint_to_adjust
         st.session_state[map_processed_key] = map_signature
+    else:
+        clicked, effective_endpoint = None, None
     if isinstance(clicked, dict) and {"lat", "lng"}.issubset(clicked):
         snapped_km = round(
             _nearest_route_km(
@@ -1215,3 +1152,49 @@ def _render_explorer():
     second_row[2].metric("FC media", f"{metrics['heart_rate_mean']:.0f} bpm" if metrics["heart_rate_mean"] is not None else "—")
     second_row[3].metric("FC máxima", f"{metrics['heart_rate_max']:.0f} bpm" if metrics["heart_rate_max"] is not None else "—")
     _render_save_form(path, payload, segment, metrics, start_km, end_km)
+MAP_LAYERS = {
+    "OpenTopoMap": {
+        "label": "Topográfico",
+        "url": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        "attribution": "© OpenTopoMap · © OpenStreetMap contributors",
+        "help": "Curvas de nivel y relieve; recomendado para análisis general.",
+    },
+    "OpenHikingMap": {
+        "label": "Senderismo",
+        "url": "https://tile.openmaps.fr/openhikingmap/{z}/{x}/{y}.png",
+        "attribution": "© OpenHikingMap · © OpenStreetMap contributors",
+        "help": "Prioriza senderos y elementos de montaña.",
+    },
+    "CyclOSM": {
+        "label": "Ciclismo",
+        "url": "https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png",
+        "attribution": "© CyclOSM · © OpenStreetMap contributors",
+        "help": "Muestra infraestructura y rutas útiles para bicicleta.",
+    },
+    "OSM Swiss Style": {
+        "label": "Suiza",
+        "url": "https://tile.osm.ch/osm-swiss-style/{z}/{x}/{y}.png",
+        "attribution": "© OpenStreetMap contributors · OSM Swiss Style",
+        "help": "Estilo local de OpenStreetMap para rutas en Suiza.",
+    },
+}
+
+
+def _map_layer_selector(key: str) -> str:
+    return st.selectbox(
+        "Mapa base",
+        tuple(MAP_LAYERS),
+        format_func=lambda item: MAP_LAYERS[item]["label"],
+        key=key,
+        help="Cambia solo la capa visual: el recorrido y el análisis no se modifican.",
+    )
+
+
+def _base_map(location, layer_name: str, zoom_start=12):
+    layer = MAP_LAYERS[layer_name]
+    map_view = folium.Map(location=location, zoom_start=zoom_start, tiles=None, control_scale=True)
+    folium.TileLayer(
+        tiles=layer["url"], attr=layer["attribution"], name=layer["label"],
+        subdomains="abc", max_zoom=20,
+    ).add_to(map_view)
+    return map_view

@@ -9,8 +9,8 @@ RECIPES = {
         "operation": "aerobic_efficiency",
         "metric_ids": {"metric_speed_at_standardized_heart_rate"},
         "preferred_zones": {"Z2"},
-        "summary": "Priorizar trabajo continuo en Z2 y una oportunidad comparable de Speed@FC.",
-        "allowed_changes": ["redistribuir carga", "extender Z2", "favorecer continuidad", "terreno comparable"],
+        "summary": "Mantener la sesión prevista e identificar dentro de ella una oportunidad comparable de Speed@FC.",
+        "allowed_changes": ["mantener sesión", "buscar tramo continuo y plano para evaluar"],
     },
     "goal_vertical_climbing_performance": {
         "name": "Rendimiento en ascenso vertical",
@@ -63,4 +63,3 @@ STATUS_URGENCY = {
     "Próxima a vencer": 2,
     "Reciente": 0,
 }
-

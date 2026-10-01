@@ -43,7 +43,8 @@ def _sessions_for_selected_changes(proposal, selected_change_ids):
     selected = set(selected_change_ids)
     if selected == {item["change_id"] for item in proposal.get("changes", [])}:
         return deepcopy(proposal["adapted_sessions"])
-    result = deepcopy(proposal["base_sessions"])
+    additional = [item for item in proposal.get("base_sessions", []) if item.get("manual_additional")]
+    result = [item for item in deepcopy(proposal["base_sessions"]) if not item.get("manual_additional")]
     by_date = {item["date"]: item for item in result}
     adapted = {item["date"]: item for item in proposal["adapted_sessions"]}
     changes = {item["change_id"]: item for item in proposal.get("changes", [])}
@@ -58,7 +59,18 @@ def _sessions_for_selected_changes(proposal, selected_change_ids):
         elif change["type"] == "replace_session":
             day = change["after"]["date"]
             by_date[day] = deepcopy(adapted[day])
-    return [by_date[day] for day in sorted(by_date)]
+    return sorted([by_date[day] for day in sorted(by_date)] + deepcopy(additional), key=lambda item: (item.get("date", ""), item.get("session_id", "")))
+
+
+def _daily_estimated_loads(sessions):
+    """Sum every scheduled session on each date, including double sessions."""
+    daily = {}
+    for session in sessions:
+        session_date = session.get("date")
+        if not session_date:
+            continue
+        daily[session_date] = daily.get(session_date, 0.0) + _estimated_week_load([session])
+    return {day: round(value, 2) for day, value in daily.items()}
 
 
 def publish_plan(prediction_id, proposal, selected_change_ids, comment="", decision_id=None):
@@ -77,7 +89,7 @@ def publish_plan(prediction_id, proposal, selected_change_ids, comment="", decis
         "engine_version": proposal.get("engine_version"), "week_start": week_start, "week_end": week_end,
         "selected_change_ids": list(selected_change_ids), "comment": comment.strip(),
         "sessions": sessions, "estimated_load": round(_estimated_week_load(sessions), 2),
-        "daily_loads": {item["date"]: round(_estimated_week_load([item]), 2) for item in sessions},
+        "daily_loads": _daily_estimated_loads(sessions),
         "published_at": _now(),
     }
     payload["plans"].append(value)

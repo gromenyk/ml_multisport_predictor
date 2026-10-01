@@ -125,7 +125,7 @@ def run_walk_forward(start_week, end_week, progress_callback=None):
                            "human_load": _rounded(human_load),
                            "performed_load": _rounded(_performed_load(week_start))},
         })
-    run = save_backtest({"engine_version": "adaptive_engine_v15", "start_week": start.isoformat(),
+    run = save_backtest({"engine_version": "adaptive_engine_v18", "start_week": start.isoformat(),
                          "end_week": end.isoformat(), "strict_temporal_cutoff": True, "weeks": results})
     if progress_callback:
         progress_callback(len(mondays), len(mondays), "Backtest completado")

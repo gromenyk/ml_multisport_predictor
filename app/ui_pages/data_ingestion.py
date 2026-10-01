@@ -2,10 +2,14 @@
 
 import json
 from datetime import date
+from pathlib import Path
 
+import altair as alt
+import folium
 import pandas as pd
 
 import streamlit as st
+from streamlit_folium import st_folium
 
 from backend.garmin_ingestion import (
     ACTIVITIES_DIR,
@@ -66,6 +70,96 @@ def _activity_summary(entry):
             if isinstance(duration_seconds, (int, float)) else None
         ),
     }
+
+
+def _duration_label(seconds):
+    if not isinstance(seconds, (int, float)):
+        return "—"
+    minutes = round(float(seconds) / 60)
+    return f"{minutes // 60} h {minutes % 60:02d} min" if minutes >= 60 else f"{minutes} min"
+
+
+def _render_processed_activity(path):
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        st.warning("No se pudo abrir la actividad recién procesada.")
+        return
+    activity, summary = payload.get("activity", {}), payload.get("summary", {})
+    records = pd.DataFrame(payload.get("records") or [])
+    st.subheader("Actividad recién procesada")
+    columns = st.columns(4)
+    columns[0].metric("Disciplina", activity.get("sport_profile_name") or activity.get("sport") or "—")
+    columns[1].metric("Distancia", f"{float(activity.get('distance_meters') or 0) / 1000:.1f} km")
+    columns[2].metric("Duración activa", _duration_label(activity.get("duration_seconds")))
+    columns[3].metric("Desnivel +", f"{float(activity.get('ascent_meters') or 0):.0f} m")
+    columns = st.columns(4)
+    columns[0].metric("Velocidad media", f"{float(summary.get('average_speed_mps') or 0) * 3.6:.1f} km/h")
+    columns[1].metric("Velocidad máxima", f"{float(summary.get('maximum_speed_mps') or 0) * 3.6:.1f} km/h")
+    columns[2].metric("FC media", f"{summary.get('average_heart_rate_bpm') or '—'} bpm")
+    columns[3].metric("FC máxima", f"{summary.get('maximum_heart_rate_bpm') or '—'} bpm")
+    if records.empty or not {"latitude", "longitude"}.issubset(records):
+        st.info("Esta actividad no contiene un recorrido GPS utilizable.")
+        return
+    route = records.dropna(subset=["latitude", "longitude"]).copy()
+    if len(route) < 2:
+        st.info("Esta actividad no contiene suficientes puntos GPS para dibujar la ruta.")
+        return
+    route = route.iloc[::max(1, len(route) // 3000)]
+    center = route.iloc[len(route) // 2]
+    map_view = folium.Map(
+        location=[float(center.latitude), float(center.longitude)], zoom_start=12,
+        tiles="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        attr="© OpenTopoMap · © OpenStreetMap contributors", control_scale=True,
+    )
+    folium.PolyLine(route[["latitude", "longitude"]].values.tolist(), color="#1267E5", weight=5).add_to(map_view)
+    st_folium(map_view, key=f"ingestion_map_{path.name}", height=460, use_container_width=True, returned_objects=[])
+    if {"distance_meters", "altitude_meters"}.issubset(records) and records["altitude_meters"].notna().any():
+        profile = records.dropna(subset=["distance_meters", "altitude_meters"]).copy()
+        profile["distance_km"] = profile["distance_meters"] / 1000
+        chart = alt.Chart(profile).mark_area(line={"color": "#1267E5", "strokeWidth": 2}, color="#1267E5", opacity=.18).encode(
+            x=alt.X("distance_km:Q", title="Distancia (km)"),
+            y=alt.Y("altitude_meters:Q", title="Altitud (m)", scale=alt.Scale(zero=False)),
+            tooltip=[alt.Tooltip("distance_km:Q", title="Distancia", format=".2f"), alt.Tooltip("altitude_meters:Q", title="Altitud", format=".0f")],
+        ).properties(height=280, title="Perfil altimétrico")
+        st.altair_chart(chart, use_container_width=True)
+
+
+def _render_activity_browser():
+    entries = load_activity_index()
+    if not entries:
+        return
+    rows = sorted((_activity_summary(item) for item in entries), key=lambda item: (item["date"], item["file"]), reverse=True)
+    query = st.text_input("Buscar actividad", key="ingestion_activity_search", placeholder="Fecha, disciplina o nombre del archivo")
+    if query.strip():
+        needle = query.strip().lower()
+        rows = [item for item in rows if needle in " ".join(str(item.get(key, "")).lower() for key in ("date", "discipline", "file"))]
+    st.subheader("Explorar actividades anteriores")
+    if not rows:
+        st.info("No hay actividades que coincidan con la búsqueda.")
+        return
+    page_size = 10
+    page_count = (len(rows) + page_size - 1) // page_size
+    page = st.selectbox(
+        "Página", tuple(range(page_count)),
+        format_func=lambda value: f"{value + 1} de {page_count}",
+        key="ingestion_activity_page",
+    )
+    visible = rows[page * page_size:(page + 1) * page_size]
+    st.dataframe(pd.DataFrame([{
+        "Fecha": item["date"], "Disciplina": item["discipline"],
+        "Distancia (km)": round(float(item["distance_km"] or 0), 1),
+        "Duración (min)": round(float(item["duration_minutes"] or 0)),
+    } for item in visible]), hide_index=True, use_container_width=True)
+    by_file = {item["file"]: item for item in visible}
+    selected = st.selectbox(
+        "Actividad para visualizar", tuple(by_file),
+        format_func=lambda value: f"{by_file[value]['date']} · {by_file[value]['discipline']} · {float(by_file[value]['distance_km'] or 0):.1f} km",
+        key="ingestion_activity_viewer",
+    )
+    if st.button("Visualizar actividad", use_container_width=True, key="view_previous_activity"):
+        st.session_state["last_processed_activity_path"] = str(by_file[selected]["path"])
+        st.rerun()
 
 
 def _render_activity_management():
@@ -230,10 +324,23 @@ def _render_fit_ingestion():
             success, logs = extract_fit_activities()
         if success:
             st.success("Actividades Garmin procesadas correctamente.")
+            processed = sorted(
+                ACTIVITIES_DIR.glob("activity_*.json"),
+                key=lambda item: item.stat().st_mtime_ns,
+                reverse=True,
+            )
+            if processed:
+                st.session_state["last_processed_activity_path"] = str(processed[0])
         else:
             st.error("Falló la extracción de los archivos FIT.")
         with st.expander("Registros de extracción Garmin", expanded=not success):
             st.code(logs or "El proceso no produjo registros.", language="text")
+    latest_path = st.session_state.get("last_processed_activity_path")
+    if latest_path:
+        path = ACTIVITIES_DIR / Path(latest_path).name
+        if path.exists():
+            _render_processed_activity(path)
+    _render_activity_browser()
 
 
 def _render_plan_ingestion():

@@ -10,10 +10,14 @@ El sistema combina dos mecanismos diferentes:
 1. Un conjunto de modelos entrenados con planificaciones históricas genera una **semana base** siguiendo la estructura aprendida de los entrenadores.
 2. Un motor determinista y explicable construye el **plan definitivo**, adaptando esa semana base según el estado actual del atleta, la carga, la recuperación, la disponibilidad, los objetivos activos, las métricas y la memoria de tolerancia a entrenamientos anteriores.
 
+El campo histórico **tipo de sesión** se conserva internamente solo para mantener compatibles los modelos congelados. No es una variable fisiológica ni una palanca de la capa adaptativa: las decisiones y los cambios visibles se expresan mediante disciplina, zona, terreno, distancia o duración y bloques/plantillas estructurados.
+
+Cuando una métrica **Speed@FC** requiere una nueva observación, la capa adaptativa no transforma toda la salida en una sesión plana. Conserva la sesión y muestra una oportunidad de evaluación: aprovechar, si existe, un tramo continuo y cercano a plano en Z2 durante al menos 3 minutos.
+
 El circuito principal es:
 
 ```text
-Planillas históricas y semanas adaptadas aprobadas
+Planillas históricas humanas
                     |
                     v
        Contexto de 4 semanas planificadas
@@ -65,6 +69,8 @@ Ningún cambio adaptativo se publica automáticamente. La aprobación humana es 
 | Página | Responsabilidad |
 |---|---|
 | Ingestión de datos | Cargar FIT, procesar actividades, registrar respuesta postentrenamiento y controlar el uso analítico de cada actividad. También procesa planillas históricas. |
+| Estadísticas | Consolidar volumen histórico y reciente por deporte: sesiones, distancia, tiempo activo, desnivel y carga. |
+| Análisis fisiológico | Generar bajo demanda una interpretación crítica del último entrenamiento o del estado actual mediante evidencia estructurada, sin modificar el plan. |
 | Planificación | Paso 1: generar la semana base histórica. Paso 2: contextualizarla, proponer cambios, revisarlos y publicar el plan definitivo. |
 | Calendario | Mostrar eventos, ventanas, sesiones predichas/publicadas, actividades realizadas, carga y protocolos de evaluación compatibles con la sesión del día. |
 | Carga de entrenamiento | Comparar carga prescrita, predicha base, adaptada aprobada y realizada; mostrar carga diaria, aguda, habitual, balance, cambio semanal y monotonía. |
@@ -72,6 +78,22 @@ Ningún cambio adaptativo se publica automáticamente. La aprobación humana es 
 | Objetivos | Administrar eventos, ventanas, catálogos, asignaciones, prioridades, métricas, zonas de FC, mediciones y evaluación de rutas GPX. |
 | Segmentos | Definir segmentos desde FIT, reconocer intentos históricos, agrupar rutas repetidas y comparar velocidades por zona de FC. |
 | Entrenamiento del modelo | Visible pero congelado para impedir reentrenamientos accidentales. |
+
+### 2.1 Análisis fisiológico asistido
+
+La página **Análisis fisiológico** usa dos análisis separados. El análisis de sesión recibe únicamente la última actividad, la ventana activa y el contexto inmediato de carga/recuperación; el panorama general recibe además las ventanas futuras, objetivos, métricas, rutas/segmentos y sesiones recientes. Los comentarios libres asociados a cada actividad se incluyen como evidencia cualitativa: pueden explicar calor, molestias, nutrición, estrés o condiciones inusuales, pero no se tratan como diagnóstico. El peso y la grasa corporal se incluyen como tendencia resumida y solo se comentan cuando muestran un cambio suficientemente sostenido y pertinente. Los FIT Garmin con perfil **Ejercicios** se resumen aparte como fuerza/gimnasio: aportan frecuencia y duración, pero no se confunden con carga aeróbica ni con ausencia de trabajo de fuerza. No envía los registros GPS o de FC punto a punto de los FIT.
+
+Su función es interpretar coherencia fisiológica y especificidad para resistencia multideporte y carreras de expedición. No modifica la planificación, no sustituye las reglas del motor adaptativo y no realiza diagnósticos médicos. El análisis muestra también la evidencia estructurada utilizada y puede descargarse como Markdown.
+
+La salida prioriza una interpretacion narrativa y educativa, separada para la ultima sesion y para el panorama general. No pretende duplicar el panel de datos: las cifras se usan solo como evidencia de una conclusion y el detalle estructurado queda desplegable en la UI.
+
+### 2.2 Revision fisiologica de una semana adaptada
+
+Tras generar una propuesta adaptada, **Planificacion** permite solicitar una revision explicativa por LLM. Esta no modifica ni aprueba el plan: interpreta la semana base, la adaptada, los cambios, las reglas activadas, los limites y el Athlete State que uso el motor. Incluye obligatoriamente la consistencia con las cuatro semanas anteriores de actividad realizada desde FIT (no semanas predichas), junto con la fuerza/gimnasio Garmin registrada por separado.
+
+### 2.3 Ajustes manuales antes de la adaptacion
+
+La planificacion conserva la prediccion original y permite crear una version manual intermedia antes de ejecutar la capa adaptativa. En ella se puede convertir un dia en descanso o definir una sesion de Bici, Trail, Corrida o Kayak con zona, terreno, distancia o duracion y una nota. Cada sesion puede marcarse como protegida: el motor adaptativo la mantiene sin cambios en la propuesta final, aunque sus restricciones y conflictos potenciales siguen siendo evaluados y visibles.
 
 ## 3. Fuentes de datos
 
@@ -105,8 +127,11 @@ Los FIT originales no se modifican. Los JSON de actividad son la fuente normaliz
 
 - Las planillas procesadas del entrenador se almacenan en `data/processed_data/`.
 - Las semanas adaptadas y aprobadas se exportan a `data/planned_history/`.
-- Si ambas fuentes contienen la misma semana, la semana adaptada aprobada tiene prioridad para construir el contexto futuro.
 - Las planillas humanas originales no se sobrescriben.
+
+Las semanas adaptadas aprobadas se conservan como historial operativo y para
+mostrar el plan publicado, pero **no** se usan como entrada del modelo de
+predicción. El contexto del modelo proviene siempre de planillas humanas.
 
 ### 3.3 Bienestar y recuperación
 
@@ -483,11 +508,26 @@ Con dos respuestas consecutivas bien toleradas, modo construcción y un descanso
 
 ### 9.1 Contexto
 
-La predicción utiliza exactamente las últimas 4 semanas planificadas consecutivas:
+La predicción utiliza exactamente un bloque de 4 semanas consecutivas de
+**planillas humanas**. No se fija necesariamente en las últimas cuatro: evalúa
+todos los bloques históricos consecutivos y escoge el de perfil más parecido al
+estado reciente del atleta. La comparación considera volumen semanal,
+distribución por disciplina, distribución por zonas, frecuencia de sesiones y
+cantidad de sesiones intensas. La selección y su porcentaje de similitud se
+muestran en Planificación.
 
-- inicialmente provienen de planillas humanas;
-- a medida que se aprueban semanas adaptadas, estas reemplazan a la semana humana equivalente dentro del contexto;
-- no utiliza directamente los FIT realizados ni el Athlete State para predecir la base.
+El selector conserva la última referencia elegida. Al abrir una semana nueva,
+prefiere avanzar al bloque histórico consecutivo siguiente si su similitud se
+mantiene cerca de la mejor alternativa; así evita quedar anclado al mismo bloque
+por inercia. Al regenerar una misma semana conserva su bloque para que el
+resultado sea reproducible. Si el siguiente bloque deja de ser compatible,
+vuelve a elegir el perfil históricamente más parecido.
+
+Las semanas adaptadas aprobadas no reemplazan esas entradas ni se realimentan al
+modelo.
+
+No utiliza directamente los FIT realizados ni el Athlete State para predecir
+la semana base. Esos datos se aplican después, por medio de la capa adaptativa.
 
 Esto conserva el estilo y la estructura histórica de planificación. La realidad ejecutada entra después, por medio de la capa adaptativa.
 
@@ -505,6 +545,12 @@ Para cada día se predicen o seleccionan:
 - distancia.
 
 Las sesiones estructuradas reutilizan una biblioteca extraída de las planillas históricas.
+
+Para Kayak no se predice terreno. Las sesiones no estructuradas reutilizan una
+duración y distancia de una sesión histórica comparable; la duración es la dosis
+principal y permite calcular carga prevista. Cuando la memoria longitudinal
+habilita progresión de Kayak, ajusta primero la duración y escala la distancia
+esperada en la misma proporción.
 
 ### 9.3 Restricción temporal
 
@@ -554,7 +600,7 @@ quedan registradas como cambios separados y explicables.
 | Recuperación limitada | Readiness <40 y confianza media/alta | Reducir 10% Z1–Z3 y 15% Z4–Z6. |
 | Sobrecarga aguda | `(habitual − aguda) / habitual ≤ −25%` | Concentrar una reducción proporcional al exceso en un máximo de dos sesiones. |
 | Progreso geográfico | Ruta o segmento comparable con al menos 5 intentos y zona FC definida | Una pérdida clara individual aporta atención a la receta y orienta el estímulo específico; no reduce ni bloquea por sí sola la progresión de carga. |
-| Construcción | Readiness ≥55, confianza media/alta, carga aguda ≥20% bajo la habitual y sin molestia | Habilitar progresión y recetas intensas. |
+| Construcción | Readiness ≥55, confianza media/alta, carga aguda no más de 10% sobre la habitual, sin molestia y una respuesta comparable bien tolerada | Habilitar progresión desde una referencia demostrablemente tolerada; no exige una descarga previa artificial. |
 | Memoria | Última sesión de resistencia bien tolerada y construcción habilitada | Progresar desde la referencia tolerada. |
 | Frecuencia | Dos sesiones bien toleradas consecutivas, construcción y descanso compatible | Posible sesión adicional Z2. |
 
@@ -684,7 +730,7 @@ Aunque forman parte de la información disponible, no intervienen directamente e
 - monotonía y strain;
 - exposición mecánica Carrera/Trail;
 - días desde intensidad como regla autónoma;
-- notas de texto libre.
+- notas de texto libre para las reglas deterministas (sí se usan como contexto cualitativo en el análisis fisiológico por LLM).
 
 Pueden ser útiles para interpretación humana y futuras reglas, pero no debe asumirse que hoy modifican kilómetros, intensidad o terreno.
 
@@ -713,7 +759,7 @@ El procesamiento actualiza incrementalmente carga, métricas y rutas.
 7. Revisar reglas, alternativas y cambios.
 8. Aprobar y publicar.
 
-Idealmente la planificación definitiva se hace cuando la semana en curso está suficientemente completa, normalmente el domingo por la noche. Si se vuelve a adaptar durante la semana, debe entenderse como una nueva versión basada en los datos disponibles hasta ese momento.
+Idealmente la planificación definitiva se hace cuando la semana en curso está suficientemente completa, normalmente el domingo por la noche. Durante la semana se conserva el plan aprobado: una sesión omitida o adicional queda registrada como parte de la carga real y se incorpora al generar la semana siguiente, sin intentar compensarla automáticamente.
 
 ## 13. Límites actuales y lectura correcta
 
@@ -728,7 +774,7 @@ Idealmente la planificación definitiva se hace cuando la semana en curso está 
 - Una sesión larga no es fisiológicamente equivalente a repartir toda su distancia en varias sesiones. El motor conserva una sesión principal y solo distribuye carga complementaria.
 - La regresión de métricas es descriptiva y depende del número y comparabilidad de observaciones.
 - Las rutas y segmentos aportan evidencia valiosa, pero todavía no generan decisiones automáticas.
-- Los comentarios libres se guardan para revisión humana; no se interpretan automáticamente.
+- Los comentarios libres no modifican reglas deterministas ni la planificación; el análisis fisiológico por LLM puede usarlos como contexto cualitativo.
 - Toda propuesta debe revisarse y aprobarse manualmente.
 
 ## 14. Archivos principales de referencia

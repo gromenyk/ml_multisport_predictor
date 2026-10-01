@@ -5,8 +5,12 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from dataset import TrainingDataset
-from features import encode_session, SPORT_MAP
+try:  # Imported through the ML package by the application.
+    from .dataset import TrainingDataset
+    from .features import encode_session, SPORT_MAP
+except ImportError:  # Direct script execution from ML/.
+    from dataset import TrainingDataset
+    from features import encode_session, SPORT_MAP
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

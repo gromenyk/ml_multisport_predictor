@@ -199,6 +199,65 @@ def match_segment(segment: dict, payload: dict, source_file: str) -> list[dict[s
     return attempts
 
 
+def evaluate_activity_segments(activity_path: Path) -> dict[str, Any]:
+    """Incrementally refresh attempts for one normalized FIT activity.
+
+    Only attempts of active segments for this activity are replaced. This makes
+    FIT ingestion fast while preserving attempts from every other activity and
+    any inactive/deleted segment kept for catalog history.
+    """
+    path = Path(activity_path)
+    segments = [item for item in load_segments() if item.get("active", True)]
+    active_ids = {item["id"] for item in segments}
+    previous = load_segment_attempts()
+    retained = [
+        item for item in previous
+        if not (
+            item.get("activity_file") == path.name
+            and item.get("segment_id") in active_ids
+        )
+    ]
+    previous_by_id = {item["id"]: item for item in previous}
+    detected: list[dict[str, Any]] = []
+    failure = None
+    evaluated = 0
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        evaluated = 1
+        if permits(path.name, "segments_routes"):
+            for segment in segments:
+                detected.extend(match_segment(segment, payload, path.name))
+    except Exception as error:
+        # Do not overwrite prior results if the newly extracted payload cannot
+        # be read or matched correctly.
+        return {
+            "activity_file": path.name,
+            "activities_evaluated": 0,
+            "segments_evaluated": len(segments),
+            "attempts_detected": 0,
+            "failure": str(error),
+        }
+
+    # A manual zone classification belongs to the athlete, so keep it when a
+    # deterministic refresh recreates the same attempt identity.
+    for item in detected:
+        old_zone = previous_by_id.get(item["id"], {}).get("metrics", {}).get("heart_rate_zone", {})
+        if old_zone.get("zone_source") == "manual":
+            item["metrics"]["heart_rate_zone"].update({
+                "observed_zone": old_zone.get("observed_zone"),
+                "target_zone": old_zone.get("target_zone"),
+                "zone_source": "manual",
+            })
+    save_segment_attempts(retained + detected)
+    return {
+        "activity_file": path.name,
+        "activities_evaluated": evaluated,
+        "segments_evaluated": len(segments),
+        "attempts_detected": len(detected),
+        "failure": failure,
+    }
+
+
 def evaluate_historical_segments() -> dict[str, Any]:
     segments = [item for item in load_segments() if item.get("active", True)]
     paths = sorted(ACTIVITIES_DIR.glob("activity_*.json")) if ACTIVITIES_DIR.exists() else []
